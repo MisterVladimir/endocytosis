@@ -2,7 +2,7 @@
 *.zip 
 *.tif 
 *.h5 
-data/
+test/data/*
 
 # .gitignore file 
 .gitignore
