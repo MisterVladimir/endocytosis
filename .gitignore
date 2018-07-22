@@ -2,7 +2,12 @@
 *.zip 
 *.tif 
 *.h5 
-test/data/*
+*.nd2 
+*.ijm 
+test/
+
+# vscode settings 
+.vscode/
 
 # .gitignore file 
 .gitignore
@@ -14,6 +19,7 @@ __pycache__/
 
 # C extensions
 *.so
+*.pyd
 
 # Distribution / packaging
 .Python
