@@ -6,12 +6,16 @@ Segmentation of fluorescently labeled endocytic proteins imaged on a confocal mi
 
 Prerequisites
 ==================
-Standard scientific python package (numpy, scipy) 
-tensorflow 
+numpy
+scipy
+tensorflow
+h5py
+
+python-bioformats [optional]
 
 Instalation
 ==================
-pip install endocytosis
+pip install git+https://github.com/MisterVladimir/endocytosis/archive/0.1.tar.gz'
 
 License
 ==================
@@ -20,4 +24,5 @@ This project is licensed under the GNUv3 License - see the [LICENSE.rst](LICENSE
 Acknowledgments
 ==================
 
-Joël Lamiere, at the time working in Julian Berro's lab at Yale
+Joël Lamiere, at the time working in Julian Berro's lab at Yale provided the microscopy
+data. 

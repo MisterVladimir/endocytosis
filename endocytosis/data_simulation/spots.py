@@ -28,6 +28,7 @@ import pickle
 
 from endocytosis.helpers.data_structures import TrackedList
 from endocytosis.helpers.coordinate import Coordinate1D, Coordinate2D
+from endocytosis.helpers.obj import cygauss2d
 
 
 class ImageComponent(object):
@@ -162,27 +163,23 @@ class PSFModelParent(object):
             self.save()
         return False
 
-    @staticmethod
-    def bic_function(*args):
-        return NotImplemented
-
 
 class PSFModelGaussian2D(PSFModelParent):
     """
+    TODO: incorporate EMCCCD noise into model
     """
-    # extension for: self.A*np.exp(-((X-x)**2 + (Y - y)**2)/(2*sigma.value**2))
     model_specific_attributes = ['sigma', 'A', 'x', 'y',
                                  'mx', 'my', 'b']
     class_name = u'Gaussian2D'
-    objective_function = None
-    model_function = None
+    objective_function = cygauss2d.objective
+    model_function = cygauss2d.model
 
     def __init__(self):
         super().__init__()
         self.save_upon_exit = True
 
     @classmethod
-    def render(cls, data, A, sigma, x, y, mx, my, b):
+    def render(cls, shape, A, x, y, sigma, b, mx, my):
         """
         Returns a 2d np.ndarray containing a 2d scalar field (image) of the
         model.
@@ -198,37 +195,13 @@ class PSFModelGaussian2D(PSFModelParent):
         mdh: MetaData
         If left as None, assume pixel size is 100nm.
         """
-        # TODO: maybe units shouldn't be assumed to be nanometers?
-        units = 'nm'
-        size.units = units
-        coordinate.units = units
-
-        sigma = np.mean(cls.sigma)
-        x = coordinate.x.value
-        y = coordinate.y.value
-
-        if mdh is None:
-            px = 100.
-            py = 100.
-        else:
-            px = mdh['pixelsize']['x']
-            py = mdh['pixelsize']['y']
-
-        X, Y = np.mgrid[:int(np.ceil(size.x.value / px)),
-                        :int(np.ceil(size.y.value / py))]
-        X = X * px
-        Y = Y * py
-
-        mx = np.mean(cls.mx)
-        my = np.mean(cls.my)
-        b = np.mean(cls.b)
-
-        raveled_im = cls.model_function(x, y, sigma, 1., mx, my, b,
-                                        X.ravel(), Y.ravel())
+        dx, dy = shape
+        X, Y = np.mgrid[:dx, :dy]
+        raveled_im = cls.model_function(A, sigma, x, y, mx, my, b, X, Y)
         return raveled_im.reshape(X.shape, dtype=np.float32)
 
     @classmethod
-    def fit_model(cls, data=None, mdh=None):
+    def fit_model(cls, mdh, data=None):
         """
         Fits list of 2d nd.array objects to 2d-gaussian PSF model. If no
         pixelsize is provided, use pixels as dimensions.
@@ -246,45 +219,73 @@ class PSFModelGaussian2D(PSFModelParent):
         pixelsize: Coordinate1D
         If left as None, assume pixel size is 100nm.
         """
-        if pixelsize:
-            px = mdh['pixelsize']['x']
-            py = mdh['pixelsize']['y']
-        else:
-            # assume 100nm pixelsize
-            px = 100.
-            py = 100.
+        px = mdh['pixelsize']['x']
+        py = mdh['pixelsize']['y']
 
         if data is None:
-            data = cls.data
+            data = np.array(cls.data, dtype=float, copy=True)
         elif isinstance(data, np.ndarray) and data.ndim == 3:
-            pass
+            cls.data = np.array(data, dtype=np.uint16, copy=True)
+            data = np.array(data, dtype=float)
         elif isinstance(data, (list, tuple)):
             data = np.stack(data, axis=0)
+            cls.data = np.array(data, dtype=np.uint16, copy=True)
+        else:
+            raise('No data.')
 
-        cls.data = np.array(data, dtype=np.uint16, copy=True)
         sigma = px / 3.
         x, y = np.array(data.shape[1:]) / 2 * np.array([px, py])
         mx, my, b = 0.01, 0.01, 0.0
         X, Y = np.mgrid[:data.shape[1], :data.shape[2]]
-        X, Y = X.ravel() * px, Y.ravel() * py
+        X, Y = X * px, Y * py
 
-        data = data.reshape((data.shape[0], -1)) / data.max()
+        result = np.array([minimize(
+                                cls.objective_function,
+                                x0=(1., sigma, x, y, mx, my, b),
+                                args=(d, X, Y)) for d in data.astype(float)])
 
-        result = np.array([minimize(cls.objective_function,
-                                    x0=np.array((1., sigma, x, y, mx, my, b)),
-                                    args=(d, X, Y)) for d in data])
         # TODO: set average parameter values to private class variables
-        # TODO: test average parameters, determine accuracy of fit, BIC?
+        # TODO: test average parameters
 
-    @staticmethod
-    def bic_function(n, sigma, k):
+    @classmethod
+    def bic_function(cls, n, k, sigma):
         return n * np.log(sigma) + k * np.log(n)
 
     @classmethod
-    def get_BIC(cls, data, ):
-        # bic = n * np.log(sigma) + k * np.log(n)
-        # sigma = 
+    def BIC(cls, data, A, x, y, sigma, b, mx, my):
+        n = sigma.size
+        k = len(cls.model_specific_attributes)
+        sigma = (np.sum((data - cls.model_function(
+            data.shape, A, x, y, sigma, b, mx, my))**2)) / n
+        return bic_function(n, k, sigma)
+
+    def bic(self, *args):
         pass
+
+    def fit(self, data, mdh):
+        px = mdh['pixelsize']['x']
+        py = mdh['pixelsize']['y']
+
+        if isinstance(data, np.ndarray) and data.ndim == 3:
+            pass
+        elif isinstance(data, (list, tuple)):
+            data = np.stack(data, axis=0)
+        else:
+            raise TypeError('data must be list, tuple, or numpy.ndarray')
+        sigma = px / 3.
+        x, y = np.array(data.shape[1:]) / 2 * np.array([px, py])
+        mx, my, b = 0.01, 0.01, 0.0
+        X, Y = np.mgrid[:data.shape[1], :data.shape[2]]
+        X, Y = X * px, Y * py
+
+        # should sigma be fixed?
+        result = np.array([minimize(
+                                self.objective_function,
+                                x0=(1., sigma, x, y, mx, my, b),
+                                args=(d, X, Y)) for d in data.astype(float)])
+
+        # TODO: set average parameter values to private class variables
+        # TODO: test average parameters
 
 
 class Spot(ImageComponent):

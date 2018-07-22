@@ -1,3 +1,9 @@
+[required]
 numpy
 scipy
 tensorflow
+h5py
+
+[java]
+javabridge
+python-bioformats
