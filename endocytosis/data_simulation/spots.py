@@ -31,59 +31,6 @@ from endocytosis.helpers.coordinate import Coordinate1D, Coordinate2D
 from endocytosis.helpers.obj import cygauss2d
 
 
-class ImageComponent(object):
-    """
-    coordinate property is center of the object, where (0,0) is the parent
-    object's coordinate.
-    """
-    @property
-    def coordinate(self):
-        try:
-            return self._coordinate
-        except AttributeError:
-            return None
-
-    @coordinate.setter
-    def coordinate(self, c):
-        self._coordinate = c
-
-    def global_coordinate(self):
-        def get_parent_coordinate(child):
-            if hasattr(child, 'parent') and child.parent is not None:
-                return self.coordinate + get_parent_coordinate(child.parent)
-            else:
-                return Coordinate2D(0, 0)
-        return get_parent_coordinate(self)
-
-    @property
-    def pixelsize(self):
-        try:
-            return self._pixelsize
-        except AttributeError:
-            return self.parent.pixelsize
-
-    @pixelsize.setter
-    def pixelsize(self, value):
-        assert isinstance(value, Coordinate1D),
-        "pixelsize must be of type Coordinate1D"
-        self._coordinate = value
-
-    @property
-    def parent(self):
-        return self._parent
-
-    @parent.setter
-    def parent(self, p):
-        if p is not None and self is not in self._parent.children:
-            self._parent.children.append(self)
-            self._parent.dirty = True
-        elif p is None:
-            self._parent.children.remove(self)
-            self._parent.dirty = True
-
-        self._parent = p
-
-
 class PSFModelFactory(type):
     """
     Metaclass
@@ -288,9 +235,68 @@ class PSFModelGaussian2D(PSFModelParent):
         # TODO: test average parameters
 
 
+class ImageComponent(ABC):
+    """
+    coordinate property is center of the object, where (0,0) is the parent
+    object's coordinate.
+    """
+    def __init__(self, coord, parent=None):
+        super().__init__()
+        self._parent = parent
+
+    @property
+    def coordinate(self):
+        try:
+            return self._coordinate
+        except AttributeError:
+            return None
+
+    @coordinate.setter
+    def coordinate(self, c):
+        self._coordinate = c
+
+    def global_coordinate(self):
+        def get_parent_coordinate(child):
+            if hasattr(child, 'parent') and child.parent is not None:
+                return self.coordinate + get_parent_coordinate(child.parent)
+            else:
+                return Coordinate2D(0, 0)
+        return get_parent_coordinate(self)
+
+    @property
+    def pixelsize(self):
+        try:
+            return self._pixelsize
+        except AttributeError:
+            return self.parent.pixelsize
+
+    @pixelsize.setter
+    def pixelsize(self, value):
+        assert isinstance(value, Coordinate1D), "pixelsize must be of type"
+        "Coordinate1D"
+
+        self._coordinate = value
+
+    @property
+    def parent(self):
+        return self._parent
+
+    @parent.setter
+    def parent(self, p):
+        if hasattr(self._parent, 'children'):
+            if p is not None and self not in self._parent.children:
+                self._parent.children.append(self)
+                self._parent.dirty = True
+            elif p is None:
+                self._parent.children.remove(self)
+                self._parent.dirty = True
+
+        self._parent = p
+
+
 class Spot(ImageComponent):
     def __init__(self, coordinate, parent=None):
-        self.parent = parent
+        super().__init__(coordinate, parent)
         if parent is not None:
             coordinate.units = self.pixelsize.units
         self.coordinate = coordinate

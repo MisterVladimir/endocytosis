@@ -1,3 +1,2 @@
 include *.txt
 include *.rst
-include endocytosis/endocytosis/helpers/obj/cygauss2d.pyx

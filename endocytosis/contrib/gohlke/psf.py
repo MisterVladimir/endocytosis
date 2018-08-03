@@ -98,7 +98,7 @@ import threading
 import numpy
 
 try:
-    import _psf
+    import endocytosis.contrib.gohlke._psf as _psf
 except ImportError:
     raise ImportError(
         'The compiled psf.c extension module could not be found. '

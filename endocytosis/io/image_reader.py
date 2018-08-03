@@ -19,9 +19,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
+from abc import ABC, ABCMeta
+import h5py
+from os.path import abspath
+from copy import copy
+from scipy.optimize import minimize
+import pickle
+import tensorflow as tf
+import bioformats
 
-n = 1024
-wavelength = 500.
-NA = 1.45
-k_xy = 2.*np.pi/(wavelength/2.*NA)
-k_z = 2.*np.pi*n/wavelength*(1.-np.sqrt((1.-(NA/n)**2.)))
+from endocytosis.helpers.data_structures import TrackedList
+from endocytosis.helpers.coordinate import Coordinate1D, Coordinate2D
+from endocytosis.contrib.gohlke import tifffile
+from endocytosis.io import IO
+
+
+class ImageWriter(IO):
+    pass

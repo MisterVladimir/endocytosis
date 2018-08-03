@@ -26,7 +26,7 @@ from os import path
 from numpy import get_include
 
 
-with open('README.rst', 'r') as f:
+with open('README.md', 'r') as f:
     README = f.read()
 
 
@@ -137,7 +137,7 @@ def get_requirements(*args):
         return sum(req_dict.values(), [])
 
 
-def create_extension(path_as_list, sources, module_name, cpy=False):
+def create_extension(path_as_list, sources, module_name):
     # def create_extension(name, sources):
     """
     """
@@ -157,23 +157,22 @@ def create_extension(path_as_list, sources, module_name, cpy=False):
     ext = Extension(name, sources, include_dirs=[get_include()],
                     extra_compile_args=compile_args, extra_link_args=link_args)
 
-    # if cpy: return cythonize(ext)
     return ext
 
 if __name__ == '__main__':
     from setuptools import find_packages
     kwargs = [{'path_as_list': ['endocytosis', 'helpers', 'obj'],
                'sources': ['cygauss2d.c'],
-               'module_name': 'cygauss2d',
-               'cpy': True},
+               'module_name': 'cygauss2d'
+               },
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
                'sources': ['psf.c'],
-               'module_name': '_psf',
-               'cpy': False},
+               'module_name': '_psf'
+               },
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
                'sources': ['tifffile.c'],
-               'module_name': '_tifffile',
-               'cpy': False}]
+               'module_name': '_tifffile'
+               }]
     ext = [create_extension(**k) for k in kwargs]
     ver = '0.1'
     url = r'https://github.com/MisterVladimir/endocytosis'

@@ -3,6 +3,7 @@ numpy
 scipy
 tensorflow
 h5py
+pathlib
 
 [java]
 javabridge

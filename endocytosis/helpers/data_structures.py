@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
 import copy
+import h5py
 
 
 class TrackedList(list):
@@ -44,7 +45,7 @@ class TrackedList(list):
         self._append_removeable(item)
         super().remove(item)
 
-    def pop(self): 
+    def pop(self):
         self._append_removeable(self[-1])
         super().pop()
 
