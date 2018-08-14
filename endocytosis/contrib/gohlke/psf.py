@@ -106,7 +106,7 @@ except ImportError:
 
 __version__ = '2018.02.07'
 __docformat__ = 'restructuredtext en'
-__all__ = 'PSF', 'Pinhole'
+__all__ = 'PSF', 'Pinhole', 
 
 ANISOTROPIC = 1
 ISOTROPIC = 2
@@ -202,7 +202,8 @@ class PSF(object):
                  refr_index=1.333, magnification=1.0, underfilling=1.0,
                  pinhole_radius=None, pinhole_shape='round',
                  expsf=None, empsf=None, name=None):
-        """Initialize the PSF object.
+        """
+        Initialize the PSF object.
 
         Arguments
         ---------
@@ -543,17 +544,17 @@ class Dimensions(dict):
         try:
             dim = self[unit]
         except KeyError:
-            dict.__setitem__(self, unit, value)
+            super().__setitem__(unit, value)
         else:
             try:
                 scale = value / dim
                 for k, v in self.items():
-                    dict.__setitem__(self, k, v * scale)
+                    super().__setitem__(k, v * scale)
             except TypeError:
                 scale = tuple(v/d for v, d in zip(value, dim))
                 for k, v in self.items():
-                    dict.__setitem__(
-                        self, k, tuple(v*s for v, s in zip(self[k], scale)))
+                    super().__setitem__(
+                        k, tuple(v*s for v, s in zip(self[k], scale)))
 
     def __getattr__(self, unit):
         """Return value of unit."""
@@ -659,20 +660,20 @@ def mirror_symmetry(data):
 
 def imshow(subplot, data, title=None, sharex=None, sharey=None,
            vmin=-2.5, vmax=0.0, cmap=None, interpolation='lanczos', **kwargs):
-    """Log-plot image using matplotlib.pyplot. Return plot axis and plot.
-
-    Mirror symmetry is applied along the x and y axes.
-
-    Requires pyplot already imported `from matplotlib import pyplot`.
-
     """
-    pyplot = sys.modules['matplotlib.pyplot']
+    Log-plot image using matplotlib.pyplot. Return plot axis and plot.
+    Mirror symmetry is applied along the x and y axes.
+    """
+    try:
+        plt = sys.modules['matplotlib.pyplot']
+    except KeyError:
+        import matplotlib.pyplot as plt
 
-    ax = pyplot.subplot(subplot, sharex=sharex, sharey=sharey, facecolor='k')
+    ax = plt.subplot(subplot, sharex=sharex, sharey=sharey, facecolor='k')
     if title:
-        pyplot.title(title)
+        plt.title(title)
     if cmap is None:
-        cmap = pyplot.cm.cubehelix  # coolwarm
+        cmap = plt.cm.cubehelix  # coolwarm
     try:
         # workaround: set alpha for i_bad
         cmap._init()
@@ -680,10 +681,10 @@ def imshow(subplot, data, title=None, sharex=None, sharey=None,
     except AttributeError:
         pass
 
-    im = pyplot.imshow(mirror_symmetry(numpy.log10(data)),
+    im = plt.imshow(mirror_symmetry(numpy.log10(data)),
                        vmin=vmin, vmax=vmax, cmap=cmap,
                        interpolation=interpolation, **kwargs)
-    pyplot.axis('off')
+    plt.axis('off')
     return ax, im
 
 

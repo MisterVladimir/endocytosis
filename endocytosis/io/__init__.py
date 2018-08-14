@@ -24,5 +24,8 @@ class IO(object):
     def __enter__(self):
         return self
 
-    def __exit__(self):
-        self._file.close()
+    def __exit__(self, typ, value, traceback):
+        try:
+            self._file.close()
+        except AttributeError:
+            pass

@@ -19,16 +19,21 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-from abc import ABC, ABCMeta
+import abc
 import h5py
+import pickle
+import weakref
 from os.path import abspath
 from copy import copy
 from scipy.optimize import minimize
-import pickle
+from collections import Callable
 
-from endocytosis.helpers.data_structures import TrackedList
-from endocytosis.helpers.coordinate import Coordinate1D, Coordinate2D
-from endocytosis.helpers.obj import cygauss2d
+import endocytosis.contrib.gohlke.psf as psf
+from endocytosis.helpers.data_structures import TrackedList, ListDict
+from endocytosis.helpers.coordinate import Coordinate
+from endocytosis.helpers.decorators import methdispatch
+
+__all__ = [PSFFactory, FieldOfView, Cell, Spot]
 
 
 class PSFModelFactory(type):
@@ -235,21 +240,36 @@ class PSFModelGaussian2D(PSFModelParent):
         # TODO: test average parameters
 
 
-class ImageComponent(ABC):
+def PSFFactory(psftype, dims=(4., 4.), ex_wavelen=None, em_wavelen=None,
+               num_aperture=1.2, refr_index=1.333, magnification=1.0,
+               underfilling=1.0, pinhole_radius=None, pinhole_shape='round',
+               expsf=None, empsf=None, name=None):
+    """
+    Factory function for generating PSF objects of arbitrary shapes. See
+    documentation for psf.PSF.
+    """
+    return lambda sh: psf.PSF(psftype, sh, dims, ex_wavelen, em_wavelen,
+                              num_aperture, refr_index, magnification,
+                              underfilling, pinhole_radius, pinhole_shape, 
+                              expsf, empsf, name)
+
+
+class ImageComponent(object):
     """
     coordinate property is center of the object, where (0,0) is the parent
     object's coordinate.
     """
-    def __init__(self, coord, parent=None):
+    def __init__(self, coordinate, parent=None):
         super().__init__()
-        self._parent = parent
+        self._parent = None
+        self.parent = parent
+        self.coordinate = coordinate
+        self.rendered = False
+        self._prev_render = None
 
     @property
     def coordinate(self):
-        try:
-            return self._coordinate
-        except AttributeError:
-            return None
+        return self._coordinate
 
     @coordinate.setter
     def coordinate(self, c):
@@ -258,24 +278,28 @@ class ImageComponent(ABC):
     def global_coordinate(self):
         def get_parent_coordinate(child):
             if hasattr(child, 'parent') and child.parent is not None:
-                return self.coordinate + get_parent_coordinate(child.parent)
+                return child.coordinate + get_parent_coordinate(child.parent)
             else:
-                return Coordinate2D(0, 0)
+                return Coordinate(nm=(0, 0))
         return get_parent_coordinate(self)
 
     @property
     def pixelsize(self):
         try:
-            return self._pixelsize
-        except AttributeError:
             return self.parent.pixelsize
+        except AttributeError:
+            return self.coordinate.pixelsize
 
     @pixelsize.setter
     def pixelsize(self, value):
-        assert isinstance(value, Coordinate1D), "pixelsize must be of type"
-        "Coordinate1D"
-
-        self._coordinate = value
+        assert isinstance(value, psf.Dimensions), "pixelsize must be of type"
+        " Dimensions"
+        if self.parent is None or not hasattr(self.parent, 'pixelsize'):
+            self.coordinate.pixelsize = value
+        else:
+            raise AssertionError("Parent must be None or not have a pixelsize "
+                                 "attribute in order to set this child's "
+                                 "pixelsize.")
 
     @property
     def parent(self):
@@ -283,38 +307,56 @@ class ImageComponent(ABC):
 
     @parent.setter
     def parent(self, p):
+        # remove self from current parent's children
+        if self.rendered:
+            raise("Must un-render this item from {} before assigning "
+                  "new parent.".format(self.parent))
+
         if hasattr(self._parent, 'children'):
-            if p is not None and self not in self._parent.children:
-                self._parent.children.append(self)
-                self._parent.dirty = True
-            elif p is None:
-                self._parent.children.remove(self)
-                self._parent.dirty = True
+            self._parent.children.remove(self)
+            self._parent.dirty = True
+        if hasattr(p, 'children') and self not in p.children:
+            p.children.append(self)
+            p.dirty = True
 
         self._parent = p
 
+    @abc.abstractmethod
+    def render(self, *args):
+        pass
+
 
 class Spot(ImageComponent):
-    def __init__(self, coordinate, parent=None):
+    def __init__(self, psf_factory, coordinate, parent=None):
         super().__init__(coordinate, parent)
-        if parent is not None:
-            coordinate.units = self.pixelsize.units
-        self.coordinate = coordinate
-        self._prev_render = None
-        self.rendered = False
-        self.halfwidth = None
+        self._psf_factory = psf_factory
+        self._prev_shape = None
+        self._prev_dims = None
+
+    def __str__(self):
+        return 'Spot @ {}nm.'.format(", ".join(self.coordinate.nm))
+
+    def render(self):
+        psf = self._psf_factory(shape=self.shape)
+        return self.coordinate, psf.volume()
 
     @property
-    def units(self):
+    def shape(self):
+        return tuple(np.rint(i / j, dtype=int) for i, j in zip(
+                        self._psf_factory.dims, self.pixelsize['um']))
+
+
+class _Cell(ImageComponent):
+    def __str__(self):
+        return 'Cell @ {}nm.'.format(", ".join(self.coordinate.nm))
+
+    def render(self):
         pass
 
-    @units.setter
-    def units(self, name):
-        pass
 
-    def render_inverted(self):
-        self.rendered = False
-        return -1*self._prev_render
+class NoiseModel(ImageComponent):
+    def render(self, order, view):
+        pass
 
 
 class GaussianSpot2D(Spot):
@@ -346,53 +388,194 @@ class GaussianSpot2D(Spot):
         return self._prev_render
 
 
-class FieldOfView(object):
-    _spot_halfwidth_pixels = 15
-    PSF_sigma = Coordinate1D(250., 'nm')
-
-    def __init__(self, size, pixelsize):
-        self._data = np.zeros(size, dtype=np.float32)
-        self._pixelsize = pixelsize
-        self.X, self.Y = np.mgrid[:size[0], :size[1]]*pixelsize
+class _FieldOfView(object):
+    """
+    Parameters
+    -----------
+    dimension_order: str
+    e.g. XYZCT
+    """
+    def __init__(self, shape, pixelsize, dimension_order,
+                 psf_factory, noise_model=None):
+        self.shape = shape
+        self.pixelsize = pixelsize
+        self.psf_factory = psf_factory
+        self.noise_model = noise_model
+        self._data = np.zeros(shape, dtype=np.float32)
+        self.X, self.Y = np.mgrid[:shape[0], :shape[1]]
         self._max_X, self._max_Y = self.X[-1, -1], self.Y[-1, -1]
         self.dirty = False
-        self.spot_halfwidth = Coordinate1D(
-            self._spot_halfwidth_pixels*self.pixelsize, 'nm')
         self.children = TrackedList()
+        self.dims = {c: i for i, c in enumerate('XYZCT')
+                     if c in dimension_order.capitalize()}
+
+    @property
+    def pixelsize(self):
+        return self._pixelsize
+
+    @pixelsize.setter
+    def pixelsize(self, value):
+        assert isinstance(value, psf.Dimensions), "pixelsize must be of type"
+        " Dimensions"
+        self._pixelsize = value
 
     @property
     def data(self):
         if self.dirty:
-            self._data = self._render()
+            # self._render changes self._data
+            # ideally we'd set self._data to the value returned by
+            # self._render() but since self._data may be large,
+            # we try to avoid making copies
+            self._render()
             self.dirty = False
         return self._data
 
+    @property
+    def noise_model(self):
+        return self._noise_model
+
+    @noise_model.setter
+    def noise_model(self, model):
+        self._noise_model = model
+
+    def _get_slice(self, coordinate, shape):
+        """
+        Where in self._data to add an item.
+
+        coordinate: Dimensions
+            Location of item center.
+
+        shape: tuple
+            Shape of rendered item.
+        """
+        px = np.rint(coordinate.nm / self.pixelsize.nm)
+        ret = px[None, ...] + np.array([-shape, shape + 1])
+        # make sure item doesn't extend past the edges of self._data
+        ret[0] = np.maximum(ret[0], 0)
+        ret[1] = np.minimum(ret[1], self.data.shape)
+        return [slice(i, j) for i, j in ret.T]
+
+    @methdispatch
+    def _render_children(self, child, order, view, add=True):
+        pass
+
+    @_render_children.register(Cell)
+    def _(self, cell, order, view, add=True):
+        pass
+
+    @_render_children.register(Spot)
+    def _(self, spot, order, view, add=True):
+        sl = self._get_slice(spot.get_global_coordinate(), spot.shape)
+        sl = [sl[order[0]],
+              sl[order[1]],
+              sl[order[2]],
+              sl[order[3]],
+              sl[order[4]]]
+
+        arr = spot.render()
+        if add:
+            view[sl] += arr
+        else:
+            view[sl] -= arr
+
+    @_render_children.register(list)
+    def _(self, li, order, view, add=True):
+        for item in li:
+            self._render_children(item, order, view, add)
+
     def _render(self):
-        def edit_data(array, coord):
-            x, y = coord.to_pixels(self.pixelsize)
-            dx, dy = array.shape
-            self._data[x:x+dx, y:y+dy] += array
+        order = [v if k in 'XYZ' else None for k, v in self.dims.items()]
+        view = self._data.view(np.float32)
 
-        for item in self.children.removed:
-            edit_data(*item.render_inverted())
-        self.children.removed = []
+        removed = self.children.removed
+        self._render_children(removed, order, view, add=False)
+        removed = []
 
-        for item in self.children.added:
-            item.units = self.spot_halfwidth.units
-            if isinstance(item, Spot):
-                xi = int(np.floor(max(
-                        (item.coordinate.x.value - self.spot_halfwidth.value) /
-                        self.pixelsize)))
-                xf = int(np.ceil(min(
-                        (item.coordinate.x.value + self.spot_halfwidth.value) /
-                        self.pixelsize)))
-                yi = int(np.floor(max(
-                        (item.coordinate.y.value - self.spot_halfwidth.value) /
-                        self.pixelsize)))
-                yf = int(np.ceil(min(
-                        (item.coordinate.y.value + self.spot_halfwidth.value) /
-                        self.pixelsize)))
-                X, Y = self.X[xi:xf+1, yi:yf+1], self.Y[xi:xf+1, yi:yf+1]
-                self._data[xi:xf+1, yi:yf+1] += item.render(X, Y)
+        added = self.children.added
+        self._render_children(added, order, view, add=True)
+        added = []
 
-        self.children.added = []
+        if self.noise_model:
+            self.noise_model.render(order, view)
+
+        # removed_items = ListDict()
+        # for item in self.children.removed:
+        #     removed_items[str(item).lower().split(' ')[0]].append(item)
+        #     item.rendered = False
+
+        # added_items = ListDict()
+        # for item in self.children.added:
+        #     added_items[str(item).lower().split(' ')[0]].append(item)
+        #     item.rendered = True
+
+        # self._data -= self._render_cells(removed_items['cell'])
+        # self._data += self._render_cells(added_items['cell'])
+
+        # self._data -= self._render_spots(removed_items['spot'])
+        # self._data += self._render_spots(added_items['spot'])
+
+
+        # def render_item(_item):
+        #     if isinstance(_item, Spot):
+        #         sl, arr = self._render_spot(item)
+        #     if isinstance(_item, Cell):
+        #         sl, arr = self._render_cell(item)
+        #     return sl, arr
+
+        # def remove(_sl, _arr):
+        #     self._data[_sl] -= _arr
+
+        # def add(_sl, _arr):
+        #     self._data[_sl] += _arr
+
+        # if not self.noise_model.rendered:
+        #     self._data += self._render_noise()
+
+        # for item in self.children.removed:
+        #     sl, arr = render_item(item)
+        #     remove(sl, arr)
+        #     try:
+        #         item.rendered = False
+        #         self.children.removed.remove(item)
+        #     except:
+        #         print("{0} could not be removed from {1}. "
+        #               "Rolling back.".format(item, self))
+        #         item.rendered = True
+        #         add(sl, arr)
+
+        # for item in self.children.added:
+        #     sl, arr = render_item(item)
+        #     add(sl, arr)
+        #     try:
+        #         item.rendered = True
+        #         self.children.added.remove(item)
+        #     except:
+        #         print("{0} could not be added to {1}. "
+        #               "Rolling back.".format(item, self))
+        #         item.rendered = False
+        #         remove(sl, arr)
+
+    def add_spot(self, coordinate, parent):
+        # creates a child Spot instance
+        Spot(self.psf_factory, coordinate, parent)
+
+
+def FieldOfView(shape, pixelsize, dimension_order, psf_factory,
+                noise_model=None):
+
+    def cleanup():
+        for item in obj.children:
+            item.parent = None
+
+    obj = _FieldOfView(shape, pixelsize, dimension_order, psf_factory,
+                       noise_model)
+    return weakref.finalize(obj, cleanup)
+
+
+def Cell(*args, **kwargs):
+    def cleanup():
+        for item in obj.children:
+            item.parent = None
+
+    obj = _Cell(*args, **kwargs)
+    return weakref.finalize(obj, cleanup)

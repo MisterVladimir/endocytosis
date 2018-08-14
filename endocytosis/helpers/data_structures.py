@@ -21,6 +21,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 import copy
 import h5py
+import weakref
+from collections import OrderedDict
+
+
+class ListDict(dict):
+    def __missing__(self, key):
+        self[key] = []
+        return self[key]
 
 
 class TrackedList(list):
@@ -77,12 +85,19 @@ class TrackedList(list):
         self._append_addable(item) 
         super().insert(index, item)
 
-fresultdtype=[('tIndex', '<i4'),
-              ('fitResults', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
-              ('fitError', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
-              ('startParams', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]), 
-              ('subtractedBackground', [('g','<f4'),('r','<f4')]), ('nchi2', '<f4'),
-              ('resultCode', '<i4'), ('slicesUsed', [('x', [('start', '<i4'),('stop', '<i4'),('step', '<i4')]),('y', [('start', '<i4'),('stop', '<i4'),('step', '<i4')])])]
+# fresultdtype=[('tIndex', '<i4'),
+#               ('fitResults', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
+#               ('fitError', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
+#               ('startParams', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]), 
+#               ('subtractedBackground', [('g','<f4'),('r','<f4')]), ('nchi2', '<f4'),
+#               ('resultCode', '<i4'), ('slicesUsed', [('x', [('start', '<i4'),('stop', '<i4'),('step', '<i4')]),('y', [('start', '<i4'),('stop', '<i4'),('step', '<i4')])])]
+
+
+class MissingDict(OrderedDict):
+    def __missing__(self, key):
+        self[key] = self.__class__()
+        return self[key]
+
 
 ds_dtype = [('x', '>i4')]
 
@@ -102,7 +117,7 @@ class NestedDict(dict):
                 [k] + list(self.dtype[k].fields.keys())
                 for k in self.dtype.fields])
 
-    def __missing__(self, key): 
+    def __missing__(self, key):
         # make sure we're adding data appropriate for this class
         if key not in self.all_fields:
             pass
@@ -131,7 +146,7 @@ class NestedDict(dict):
         else:
             pass
         return None
-        
+
     def to_struct_array(self, shape):
         """
         Return the data as a numpy structured array of type self.dtype

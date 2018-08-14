@@ -34,5 +34,5 @@ from endocytosis.contrib.gohlke import tifffile
 from endocytosis.io import IO
 
 
-class ImageWriter(IO):
+class ImageReader(IO):
     pass

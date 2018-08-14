@@ -18,32 +18,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import numpy as np
-import pandas as pd
 
-from endocytosis.io import IO
+subtypes = {'text': 1,
+            'arrow': 2,
+            'ellipse': 3,
+            'image': 4,
+            'rounded_rectangle': 5}
 
-
-class CSVMetaData(dict):
-    """
-    Holds CSV file's metadata.
-    """
-    def __init__(self, data):
-        super().__init__()
-
-
-class CSVData(object):
-    pass
-
-
-class CSVReader(object):
-    """
-    Summary.
-    """
-    def __init__(self, path):
-        super().__init__()
-        self._repath = path
-        self.load_from_path(path)
-
-    def load_from_path(self, path):
-        return NotImplemented
+roi_type = {'polygon': 0,
+            'rectangle': 1,
+            'oval': 2,
+            'line': 3,
+            'freeline': 4,
+            'polyline': 5,
+            'no_roi': 6,
+            'freehand': 7,
+            'traced': 8,
+            'angle': 9,
+            'point': 10}

@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*- 
 """
 @author: Vladimir Shteyn
 @email: vladimir.shteyn@googlemail.com
@@ -18,32 +18,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import numpy as np
-import pandas as pd
-
-from endocytosis.io import IO
 
 
-class CSVMetaData(dict):
+def current_and_next(iterable, interval=1): 
     """
-    Holds CSV file's metadata.
+    Return item at current index and the item an 'interval' array distance 
+    forward. 
     """
-    def __init__(self, data):
-        super().__init__()
-
-
-class CSVData(object):
-    pass
-
-
-class CSVReader(object):
-    """
-    Summary.
-    """
-    def __init__(self, path):
-        super().__init__()
-        self._repath = path
-        self.load_from_path(path)
-
-    def load_from_path(self, path):
-        return NotImplemented
+    iterator = iter(iterable)
+    missed = [next(iterator) for _ in range(interval)] 
+    for next_ in iterator:
+        yield missed[0], next_
+        missed = missed[1:] + [next_]

@@ -19,274 +19,281 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
+import numbers
 from abc import ABC
 from copy import copy
+from collections import OrderedDict
 
 
-class Coordinate(ABC):
-    _unit_conversion = {'m': 1., 'um': 1e-3, 'nm': 1e-6}
+class Coordinate(dict):
+    _unit_conversion = OrderedDict([('nm', 1e-6), ('um', 1e-3), ('m', 1.)])
+    supported = {'iterables': (np.ndarray, list, tuple),
+                 'numbers': numbers.Real}
+
+    def __init__(self, **kwargs):
+        intersection = np.intersect1d(kwargs.keys(),
+                                      self._unit_conversion.keys())
+        assert len(intersection) < 2, "Initializing arguments may only "
+        "contain one of {}.".format(', '.join(self._unit_conversion.keys()))
+        super().__init__()
+
+        for k, v in kwargs.items():
+            if isinstance(v, self.supported['iterables']):
+                kwargs[k] = np.array(v)
+
+        super().__init__(**kwargs)
+
+        keys = list(kwargs.keys())
+        ckeys = list(self._unit_conversion.keys())
+        mask = np.isin(ckeys, keys)
+        if sum(mask) > 0:
+            key = np.array(ckeys)[mask][0]
+            self._expand_units(key, kwargs[key])
 
     def __len__(self):
-        return len(self._parameters)
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
-
-    def convert_units(self, number, units):
-        """
-        Convert number with given units to self.units.
-
-        number : int or float
-        units: string
-        One of 'nm', 'um', or 'm'.
-        """
-        if self.units == units:
-            return number
-        else:
-            self_factor = self._unit_conversion[self.units]
-            other_factor = self._unit_conversion[units]
-            factor = self_factor / other_factor
-            return number / factor
-
-
-class Coordinate1D(Coordinate):
-    _parameters = {'value': 0.}
-
-    def __init__(self, value=0., units='nm', coordinate=None):
-        super().__init__()
-        if coordinate is None:
-            # coerce units to nm
-            self.value = value
-            self._units = units
-        elif isinstance(coordinate, type(self)):
-            self.value = coordinate.value
-            self._units = coordinate.units
-        else:
-            raise('')
-
-    def __eq__(self, other):
-        if isinstance(other, Coordinate1D):
-            # convert my units to other's units
-            other_value = self.convert_units(other.value, self.units)
-            return self.value == other_value
-        elif isinstance(other, (int, float)):
-            return self.value == other
-        else:
-            return False
-
-    def __add__(self, other):
-        if isinstance(other, Coordinate1D):
-            other_value = self.convert_units(other.value, self.units)
-            return self.value + other_value
-        elif isinstance(other, (int, float)):
-            return self.value + other
-
-    def __mul__(self, other):
-        if isinstance(other, (int, float)):
-            return Coordinate1D(self.value * other, self.units)
-        elif hasattr(other, __len__) and \
-                len(other) == 1 and \
-                not isinstance(other, (str, Coordinate)):
-            return Coordinate1D(self.value * other[0], self.units)
-        else:
-            raise TypeError('Coordinates may only be multiplied by numbers or'
-                            ' arrays.')
-
-    __rmul__ = __mul__
-
-    def __truediv__(self, other):
-        if isinstance(other, (int, float)):
-            return Coordinate1D(self.value * other, self.units)
-        elif hasattr(other, __len__) and \
-                len(other) == 1 and \
-                not isinstance(other, (str, Coordinate)):
-            return Coordinate1D(self.value / other, self.units)
-        else:
-            raise TypeError('Coordinates may only be divided by numbers or'
-                            ' arrays.')
-
-        return Coordinate2D(x, y, 'nm')
-
-    def __floordiv__(self, other):
-        if isinstance(other, int):
-            return Coordinate1D(self.value // other, self.units)
-        else:
-            return self.__truediv__(other)
-
-    @property
-    def units(self):
-        return self._units
-
-    @units.setter
-    def units(self, name):
-        if name not in self._unit_conversion.keys():
-            raise("{} not supported.".format(name))
-        self.value = self.convert_units(self.value, name)
-        self._units = name
-
-    @property
-    def value(self):
-        return self._parameters['value']
-
-    @value.setter
-    def value(self, val):
-        self._parameters['value'] = val
-
-
-class Coordinate2D(Coordinate):
-    _parameters = {'x': None, 'y': None}
-
-    def __init__(self, x=0., y=0., units='nm', coordinate=None):
-        super().__init__()
-        if coordinate is None:
-            if isinstance(x, Coordinate1D) and isinstance(y, Coordinate1D):
-                self.x = x
-                self.y = y
-            elif isinstance(x, Coordinate1D) and isinstance(y, (int, float)):
-                self.x = x
-                self.y = Coordinate1D(y, x.units)
-            elif isinstance(y, Coordinate1D) and isinstance(x, (int, float)):
-                self.y = y
-                self.x = Coordinate1D(x, y.units)
-            elif isinstance(x, (int, float)) and isinstance(y, (int, float)):
-                self.x = Coordinate1D(x, units)
-                self.y = Coordinate1D(y, units)
-            else:
-                raise TypeError('x and y must be ints, floats or Coordinate1D '
-                                'objects.')
-        elif isinstance(coordinate, Coordinate2D):
-            self.x = coordinate.x
-            self.y = coordinate.y
-        else:
-            raise('')
-
-    @property
-    def units(self):
-        if self.x.units == self.y.units == self._units:
-            return self._units
-        else:
-            self.y.units = self._units
-            self.x.units = self._units
-            return self._units
-
-    @units.setter
-    def units(self, name):
-        if name not in self._unit_conversion.keys():
-            raise("{} not supported unit.".format(name))
-        for k, v in self._parameters.items():
-            self.__dict__[k].units = name
-        self._units = name
-
-    @property
-    def x(self):
-        return self._parameters['x']
-
-    @x.setter
-    def x(self, value):
-        self._parameters['x'] = value
-
-    @property
-    def y(self):
-        return self._parameters['y']
-
-    @y.setter
-    def y(self, value):
-        self._parameters['y'] = value
-
-    @property
-    def asarray(self):
-        return np.array((self.x.value, self.y.value))
-
-    @property
-    def as_structured_array(self):
-        return np.array(
-            (self.x.value, self.y.value), dtype=(('x', '<f4'), ('y', '<f4')))
-
-    def to_pixels(self, pixelsize):
-        return self.asarray / pixelsize
-
-    def __eq__(self, other):
         try:
-            if len(other) == len(self) and not isinstance(
-                    other, (str)):
-                if isinstance(other, Coordinate2D):
-                    # convert my units to other's units
-                    other_x = self.convert_units(other.x.value, other.x.units)
-                    other_y = self.convert_units(other.y.value, other.y.units)
-                    return self.x.value == other_x and self.y.value == other_y
+            length = np.array([len(v) for v in self.values()])
+            if not np.all(length[0] == length):
+                raise Exception("Lengths of members not equal.")
+        except TypeError:
+            # value in self is a float or int
+            return 1
+        except IndexError:
+            # no keys/values in self
+            return 0
+        else:
+            return length[0]
+
+    def _check_iterable(self, value):
+        if isinstance(value, self.supported['iterables']) and \
+                len(self) == len(value):
+            return True
+
+        elif isinstance(value, self.supported['numbers']):
+            return False
+        else:
+            raise TypeError("{} (type {}) is not supported.".format(
+                value, type(value)))
+
+    def __setitem__(self, unit, value):
+        if self._check_iterable(value):
+            value = np.array(value)
+        if unit in self._unit_conversion.keys():
+            self._expand_units(unit, value)
+        else:
+            super().__setitem__(unit, value)
+
+    def _expand_units(self, unit, value):
+        # create values for 'm', 'um' and 'nm' units
+        conversion = self._unit_conversion
+        d = {k: value * conversion[unit]/conversion[k] for k in conversion}
+        self.update(**d)
+
+    def __call__(self, value, unit, newunit):
+        """Return value given in unit in another unit."""
+        conversion = self._unit_conversion
+        if newunit in self.keys():
+            return value * (self[newunit] / self[unit])
+        elif unit in conversion and newunit in conversion:
+            return value * (conversion[newunit] / conversion[unit])
+
+    def _is_valid_operand(self, other):
+        """
+        For ==, >, >=, <, <=, != comparisons.
+        """
+        try:
+            if len(self) == len(other) and len(self) > 1:
+                if other.pixelsize is None and self.pixelsize is None:
+                    px = True
                 else:
-                    return self.x.value == other[0] \
-                        and self.y.value == other[1]
+                    px = all(other.pixelsize == self.pixelsize)
+
+                if other.ou_size is None and self.ou_size is None:
+                    ou = True
+                else:
+                    ou = all(other.ou_size == self.ou_size)
+
+                return px and ou
+
+            elif len(self) == len(other) == 1:
+                px = other.pixelsize == self.pixelsize
+                ou = other.ou_size == self.ou_size
+                return px and ou
             else:
                 return False
-        except AttributeError:
+        except (TypeError, AttributeError):
             return False
 
-    def __add__(self, other):
-        try:
-            if isinstance(other, Coordinate2D):
-                x = self.x.value + self.convert_units(
-                    other.x.value,    other.units)
-                y = self.y.value + self.convert_units(
-                    other.y.value, other.units)
-            elif isinstance(other, Coordinate1D):
-                x = self.x.value + self.convert_units(other.value, other.units)
-                y = self.y.value + self.convert_units(other.value, other.units)
-            elif len(other) == len(self) and not isinstance(other, str):
-                x = self.x + other[0]
-                y = self.y + other[1]
-            elif isinstance(other, (int, float)):
-                x = self.x.value + other
-                y = self.y.value + other
+    def __eq__(self, other):
+        """
+        Returns
+        ---------
+        If self.values() are np.ndarrays, return boolean array of len(self).
+        Otherwise return boolean. Comparing items of unequal pixelsizes or
+        optical unit sizes, and comparing to anything besides Coordinate
+        instances returns NotImplemented.
+        """
+        if self._is_valid_operand(other):
+            compare = np.array([self[k] == other[k] for k in
+                                self.keys() if k in other.keys()])
+            if len(compare) == 0:
+                # no keys in common between self and other
+                return False
             else:
-                raise TypeError('Can only add to items of types Coordinate2D, '
-                                'Coordinate1D, int, or float.')
-        except AttributeError:
-            raise TypeError('Array must be of length {}'.format(len(self)))
+                return compare.all(axis=0)
+        else:
+            return NotImplemented
 
-        return Coordinate2D(x, y, self.units)
+    def __lt__(self, other):
+        if self._is_valid_operand(other):
+            compare = np.array([self[k] < other[k] for k in
+                                self.keys() if k in other.keys()])
+            if len(compare) == 0:
+                # no keys in common between self and other
+                return False
+            else:
+                return compare.all(axis=0)
+        else:
+            return NotImplemented
+
+    def __le__(self, other):
+        if self._is_valid_operand(other):
+            compare = np.array([self[k] <= other[k] for k in
+                                self.keys() if k in other.keys()])
+            if len(compare) == 0:
+                # no keys in common between self and other
+                return False
+            else:
+                return compare.all(axis=0)
+        else:
+            return NotImplemented
+
+    def __gt__(self, other):
+        if self._is_valid_operand(other):
+            compare = np.array([self[k] > other[k] for k in
+                                self.keys() if k in other.keys()])
+            if len(compare) == 0:
+                # no keys in common between self and other
+                return False
+            else:
+                return compare.all(axis=0)
+        else:
+            return NotImplemented
+
+    def __ge__(self, other):
+        if self._is_valid_operand(other):
+            compare = np.array([self[k] >= other[k] for k in
+                                self.keys() if k in other.keys()])
+            if len(compare) == 0:
+                # no keys in common between self and other
+                return False
+            else:
+                return compare.all(axis=0)
+        else:
+            return NotImplemented
+
+    def __add__(self, other):
+        if self._is_valid_operand(other):
+            kwargs = {k: self[k] + other[k] for k in
+                      self.keys() if k in other.keys()}
+            return Coordinate(**kwargs)
+        else:
+            return NotImplemented
+        # # TODO: remove assert statements
+        # try:
+        #     assert other.pixelsize == self.pixelsize
+        #     assert other.ou_size == self.ou_size
+        #     assert len(other) == len(self)
+        #     common = np.intersect1d(list(self.keys()), list(other.keys()))
+
+        # except AttributeError:
+        #     raise TypeError('We can only add Coordinates with other '
+        #                     'Coordinates.')
+        # except AssertionError:
+        #     raise TypeError('Coordinate lengths or pixelsizes are not equal.')
+
+        # else:
+        #     if len(self) > 0:
+        #         coord = self.__class__()
+        #         coord.update(**{k: self[k] + other[k] for k in common})
+        #         return coord
+        #     elif len(self) == 0:
+        #         return copy(other)
+        #     elif len(other) == 0:
+        #         return copy(self)
 
     def __mul__(self, other):
-        try:
-            if isinstance(other, (int, float)):
-                x = self.x * other
-                y = self.y * other
-            elif len(other) == len(self) and not isinstance(
-                    other, (str, Coordinate)):
-                x = self.x * other[0]
-                y = self.y * other[1]
-            else:
-                raise TypeError('Coordinates may only be multiplied by '
-                                'numbers or arrays.')
-            return Coordinate2D(x, y, self.units)
-        except:
-            raise TypeError('Coordinates may only be multiplied by numbers or'
-                            ' arrays.')
+        coord = self.__class__()
+        coord.update(**{k: v * other for k, v in self.items()})
+        return coord
 
     __rmul__ = __mul__
 
     def __truediv__(self, other):
-        try:
-            if isinstance(other, (int, float)):
-                x = self.x.value / other
-                y = self.y.value / other
-            elif len(other) == len(self) and not isinstance(
-                    other, (str, Coordinate)):
-                x = self.x.value / other[0]
-                y = self.y.value / other[1]
-            else:
-                raise TypeError('Coordinates may only be divided by numbers or'
-                                ' arrays.')
-        except:
-            raise TypeError('Coordinates may only be divided by numbers or'
-                            ' arrays.')
-
-        return Coordinate2D(x, y, 'nm')
+        it = self._check_iterable(other)
+        if it and it is not NotImplemented:
+            return self.__mul__(1./np.array(other))
+        else:
+            return self.__mul__(1./other)
 
     def __floordiv__(self, other):
-        if isinstance(other, int):
-            x = self.x.value // other
-            y = self.y.value // other
-            return Coordinate2D(x, y, 'nm')
+        ret = self.__truediv__(other)
+        ret.update(**{k: np.floor(v, dtype=v.dtype)
+                      for k, v in ret.items()})
+        return ret
+
+    def _ratio(self, value_1, value_2):
+        if value_1 is None or value_2 is None:
+            return None
         else:
-            return self.__truediv__(other)
+            return value_1 / value_2
+
+    @property
+    def pixelsize(self):
+        try:
+            return self._ratio(self['nm'], self['px'])
+        except KeyError:
+            return None
+
+    @pixelsize.setter
+    def pixelsize(self, ps):
+        # get value in nanometers
+        ckeys = np.array(list(self._unit_conversion.keys()))
+        keys = np.array(list(self.keys()))
+        if isinstance(ps, Coordinate):
+            pkeys = list(ps.keys())
+            mask = np.isin(ckeys, pkeys)
+            key = ckeys[mask][0]
+            # do conversion
+            ps_nm = self.__call__(ps[key], key, 'nm')
+        elif self._check_iterable(ps):
+            ps_nm = np.array(ps)
+        elif len(self) > 1:
+            ps_nm = np.array([ps]*len(self))
+        elif len(self) == 1:
+            ps_nm = ps
+
+        mask = [item in keys for item in ckeys]
+        if sum(mask) > 0 and 'px' not in self.keys():
+            # 'nm', 'um', 'm' is set, but 'px' isn't
+            # determine the number of pixels from the 'nm'/'um'/'m'
+            # and the passed-in pixelsize
+            self['px'] = self['nm'] / ps_nm
+        elif sum(mask) == 0 and 'px' in self.keys():
+            # 'nm', 'um', 'm' aren't set, 'px' is
+            # determine the 'nm'/'um'/'m' from the
+            # number of pixels and passed-in pixelsize
+            self._expand_units('nm', ps['nm'] * ps_nm)
+        elif sum(mask) > 0 and 'px' in self.keys():
+            print('Pixelsize and physical sizes are both already set.')
+
+    @property
+    def ou_size(self):
+        try:
+            return self._ratio(self['nm'], self['ou'])
+        except KeyError:
+            return None
+
+    @ou_size.setter
+    def ou_size(self, *args):
+        pass
