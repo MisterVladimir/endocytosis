@@ -28,8 +28,8 @@ from struct import unpack
 
 from endocytosis.helpers.data_structures import ListDict
 from endocytosis.io import IO
-from endocytosis.io.roi import roi_type
-from endocytosis.io.roi.roi_objects import ROI
+from endocytosis.io.image.roi import roi_type
+from endocytosis.io.image.roi.roi_objects import ROI
 
 
 class Reader(IO):
@@ -49,8 +49,8 @@ class IJZipReader(Reader):
 
     Parameters
     -----------
-    path: str
-    Path to zip file containing ROI data.
+    regexp: str
+    Argument for re.compile() to filter roi names within the zip file.
 
     sep: str
     ROI data may contain classes of ROI, for example those labeling biological
@@ -59,8 +59,6 @@ class IJZipReader(Reader):
     [class][sep][integer]. If sep is not None -- in which every ROI is read as
     a distinct class -- then IJRoiDecoder stores ROI data in nested dictionary
     format.
-
-    image_name: str
     """
     # version 1.51
     header_size = 64
@@ -103,8 +101,8 @@ class IJZipReader(Reader):
                'sub_pixel_resolution': 128,
                'draw_offset': 256}
 
-    def __init__(self, path, sep='-'):
-        self.path = path
+    def __init__(self, regexp='.*roi$', sep=None):
+        self.regexp = re.compile(regexp)
         self.sep = sep
         self._data = ListDict()
 
@@ -119,25 +117,24 @@ class IJZipReader(Reader):
         """
         pass
 
-    def read(self, regexp='.*roi$'):
+    def keys(self):
+        return self._data.keys()
+
+    def values(self):
+        return self._data.values()
+
+    def items(self):
+        return self._data.items()
+
+    def read(self, path):
         # reads all the zip files' byte streams, sends them to parsing function 
         streams = []
-        self._file = zipfile.ZipFile(self.path, 'r')
-        regexp = re.compile(regexp)
-        filelist = [f for f in self._file.namelist() if regexp.match(f)]
+        self._file = zipfile.ZipFile(path, 'r')
+        filelist = [f for f in self._file.namelist() if self.regexp.match(f)]
         streams = [self._file.open(n).read() for n in filelist]
         streams = [s for s in streams if s[:4] == b'Iout']
         self.bytestreams = streams
         self._parse_bytestream(streams)
-
-    def _set_keys(self, names):
-        self._original_names = names
-        for name in names:
-            _name = name.split(self.sep)
-            if len(_name) == 1:
-                self._data[name[0]] = None
-            elif len(_name) == 2:
-                self._data[_name[0]][_name[1]] = None
 
     def _parse_bytestream(self, bs):
         """
@@ -183,8 +180,11 @@ class IJZipReader(Reader):
                  bs, off, le in zip(self.bytestreams, offsets, lengths)]
         # names = [bs[off:off+le*2].decode('utf-8') for bs, off, le in zip(
         #          self.bytestreams, offsets, lengths)]
-        names = [name.split(self.sep) for name in names]
-        return [li + [''] if len(li) == 1 else li for li in names]
+        if self.sep:
+            names = [name.split(self.sep) for name in names]
+            return [li + [''] if len(li) == 1 else li for li in names]
+        else:
+            return [[n, ''] for n in names]
 
     def _parse_common(self, hdr, hdr2, subpixel):
         dtype = [('x1', float), ('y1', float),

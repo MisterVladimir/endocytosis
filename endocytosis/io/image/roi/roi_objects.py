@@ -67,9 +67,8 @@ class _RectROI(_BaseROI):
     def z(self):
         return self._ctz[2]
 
-    def asarray(self, unit='px', dtype=np.float32):
-        return np.concatenate([self.origin[unit], self.sides[unit]],
-                              dtype=dtype)
+    def asarray(self, unit='px'):
+        return np.concatenate([self.origin[unit], self.sides[unit]])
 
     @property
     def pixelsize(self):

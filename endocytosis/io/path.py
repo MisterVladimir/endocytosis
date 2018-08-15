@@ -44,6 +44,9 @@ class PathFinder(object):
         self.regexp = regexp
         self.data = {k: ListDict() for k in self.extension_regexp.keys()}
 
+    def __getitem__(self, key):
+        return self.data[key]
+
     def load(self, path):
         """
         Returns a list of filenames that match self.regexp and the extension.
@@ -60,7 +63,7 @@ class PathFinder(object):
         splitpath = path.split(os.path.extsep)
         # path is a file name
         if len(splitpath) > 1:
-            folder = os.path.dirname(path) + os.path.pathsep
+            folder = os.path.dirname(path)
             if splitpath[-1] == 'csv':
                 csv_path, metadata_path = self._get_csv_metadata_path(path)
                 filenames = (csv_path, metadata_path)
@@ -80,11 +83,7 @@ class PathFinder(object):
 
         # path is a path
         elif ext is not None:
-            if not path[-1] == os.path.pathsep:
-                folder = path + os.path.pathsep
-            else:
-                folder = path
-
+            folder = path
             if ext in ('csv', '.csv'):
                 # csv files are a special case because in addition to getting
                 # the csv file we must also get the associated metadata,
