@@ -1,6 +1,8 @@
 endocytosis
 ==================
-**Author**: Vladimir Shteyn [GitHub](https://github.com/mistervladimir) [LinkedIn](https://www.linkedin.com/in/vladimir-shteyn/)
+**Author**: Vladimir Shteyn 
+**GitHub**: [GitHub](https://github.com/mistervladimir)
+**LinkedIn**: [LinkedIn](https://www.linkedin.com/in/vladimir-shteyn/)
 
 This is a work in progress. More 'How To'-type of information will be
 provided once this is in a working state. That said, the eventual goal is

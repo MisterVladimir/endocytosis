@@ -32,97 +32,6 @@ from endocytosis.io.roi import roi_type
 from endocytosis.io.roi.roi_objects import ROI
 
 
-class RoiPathFinder(object):
-    """
-    Parameters
-    -----------
-    regexp: str
-    Regular expression argument for file name before to extension.
-
-    extension: str
-    Extension of desired.
-    """
-    extension_regexp = {'csv': r'.*\.{1}csv(\.json){0,1}', 'zip': '.*.zip'}
-    # available_file_formats = {'csv': '.csv', 'zip': '.zip'}
-
-    def __init__(self, regexp=r'.*', extension=None):
-        self.extension = extension
-        self.regexp = regexp
-
-    def load(self, path):
-        """
-        Returns a list of 
-
-        Parameters
-        -----------
-        path: str
-        Folder or file name to load ROI data from.
-        """
-        # this isn't the most efficient algorithm, as basename filepaths are
-        # first globbed, and then matched to the extension's regular expression
-        ext = self.extension
-
-        splitpath = path.split(os.path.extsep)
-        # path is a file name
-        if len(splitpath) > 1:
-            self.folder = os.path.dirname(path) + os.path.pathsep
-            if splitpath[-1] == 'csv':
-                csv_path, metadata_path = self._get_csv_metadata_path(path)
-                return [csv_path, metadata_path]
-            elif splitpath[-1] == 'json' and splitpath[-2] == 'csv':
-                csv_path, metadata_path = self._get_csv_metadata_path(
-                    "{}".format(os.path.extsep).join(splitpath[:-1]))
-                return [csv_path, metadata_path]
-
-            elif splitpath[-1] == 'zip':
-                return [os.path.basename(path)]
-
-        # path is a path
-        elif ext is not None:
-            if ext == 'csv' or ext == '.csv':
-                # csv files are a special case because in addition to getting
-                # the csv file we must also get the associated metadata,
-                # which is in JSON format
-                return self._get_csv_filenames(path)
-                # return [self._load_csv(*f) for f in filenames]
-            elif ext == 'zip' or ext == '.zip':
-                return self._get_filenames(path, 'zip')
-
-        elif ext is None:
-            raise TypeError('Please set extension for folder name arguments.')
-
-        else:
-            raise TypeError('File format of {} is not compatible. Please enter '
-                            'a file or path name that contains {} '
-                            'files.'.format(path, list(self.extension_regexp.keys())))
-
-    def _get_csv_metadata_path(self, csv_path):
-        return NotImplemented, NotImplemented
-
-    def _get_csv_filenames(self, folder):
-        # TODO: not tested
-        # find all CSV files that have metadata
-        regexp = re.compile(self.regexp + self.extension_regexp['csv'])
-        filenames = [p for p in os.listdir(folder) if regexp.match(p)]
-        sorted(filenames)
-        li = []
-        filenames = iter(filenames)
-        n = next(filenames)
-        for p in filenames:
-            if p == n[:-4]:
-                li.append((p, n))
-                n = next(filenames)
-            elif n == p[:-4]:
-                li.append((n, p))
-                n = next(filenames)
-        return li
-
-    def _get_filenames(self, folder, extension):
-        regexp = re.compile(self.regexp + self.extension_regexp[extension])
-        filenames = os.listdir(folder)
-        return [p for p in filenames if regexp.match(p)]
-
-
 class Reader(IO):
     pass
 
@@ -210,11 +119,13 @@ class IJZipReader(Reader):
         """
         pass
 
-    def read(self):
+    def read(self, regexp='.*roi$'):
         # reads all the zip files' byte streams, sends them to parsing function 
         streams = []
         self._file = zipfile.ZipFile(self.path, 'r')
-        streams = [self._file.open(n).read() for n in self._file.namelist()]
+        regexp = re.compile(regexp)
+        filelist = [f for f in self._file.namelist() if regexp.match(f)]
+        streams = [self._file.open(n).read() for n in filelist]
         streams = [s for s in streams if s[:4] == b'Iout']
         self.bytestreams = streams
         self._parse_bytestream(streams)

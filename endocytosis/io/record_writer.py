@@ -25,7 +25,7 @@ from endocytosis.io import IO
 
 
 class RecordWriter(IO):
-    def __init__(self):
+    def __init__(self, image_reader, roi_reader, **options):
         super().__init__()
 
     @staticmethod

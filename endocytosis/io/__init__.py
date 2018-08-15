@@ -26,6 +26,9 @@ class IO(object):
 
     def __exit__(self, typ, value, traceback):
         try:
-            self._file.close()
+            self.cleanup()
         except AttributeError:
             pass
+
+    def cleanup(self):
+        self._file.close()

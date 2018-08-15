@@ -29,10 +29,18 @@ import tensorflow as tf
 import bioformats
 
 from endocytosis.helpers.data_structures import TrackedList
-from endocytosis.helpers.coordinate import Coordinate1D, Coordinate2D
+from endocytosis.helpers.coordinate import Coordinate
 from endocytosis.contrib.gohlke import tifffile
 from endocytosis.io import IO
 
 
 class ImageReader(IO):
-    pass
+    def __init__(self):
+        super().__init__()
+
+    def load(self, path=None, data=None, metadata=None):
+        if path is not None:
+            self._load_path(path)
+
+    def _load_path(self, path):
+        pass

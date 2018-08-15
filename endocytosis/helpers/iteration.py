@@ -20,9 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
-def current_and_next(iterable, interval=1): 
+def current_and_next(iterable, interval=1):
     """
-    Return item at current index and the item an 'interval' array distance 
+    Return item at current index and the item an 'interval' array distance
     forward. 
     """
     iterator = iter(iterable)
