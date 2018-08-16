@@ -20,9 +20,15 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
 
-import endocytosis.contrib.gohlke.tifffile.TiffFile as TiffFile
-from endocytosis.io.datasources.base_datasource import (BaseImageRequest,
-                                                        BaseDataSource)
+import endocytosis.contrib.gohlke.tifffile as tifffile
+from endocytosis.io.image.datasources.base_datasource import (BaseImageRequest,
+                                                              BaseDataSource)
+from endocytosis.io.path import PathFinder
+
+
+class TiffPathFinder(PathFinder):
+    def __init__(self, regexp=r'.*'):
+        super().__init__(regexp, 'tif')
 
 
 class TiffImageRequest(BaseImageRequest):
@@ -43,7 +49,7 @@ class TiffImageRequest(BaseImageRequest):
     ---------
 #    a 3-color image with 8 z slices
     req = TiffImageRequest('TCZXY', 1, 3, 8) # must be c, t, z order
-    datasource = TiffFileDataSource(open_file, req)
+    datasource = TiffDataSource(open_file, req)
 #    retrive 3d image in the first channel, third timepoint, and all z slices
 #    call the datasource's request method with arguments in C, T, Z order
     z_stack = datasource.request(0,2,slice(None))
@@ -61,18 +67,18 @@ class TiffImageRequest(BaseImageRequest):
             pass
         else:
             raise Exception('')
-        arr = np.asarray(self[:3])[:, None]
-        return (np.ravel_multi_index(arr, self.shape[:3])[0],
+        arr = np.array(self[:3])[:, None]
+        return (np.ravel_multi_index(arr, self.image_shape[:3])[0],
                 self['X'], self['Y'])
 
 
-class TiffFileDataSource(BaseDataSource):
+class TiffDataSource(BaseDataSource):
     module_name = 'tiff_datasource'
 
     def __init__(self, path, request):
         super().__init__()
         self._request = request
-        self.reader = TiffFile(path)
+        self.datasource = tifffile.TiffFile(path)
 
     def request(self, *ctzxy):
         """
@@ -83,7 +89,7 @@ class TiffFileDataSource(BaseDataSource):
         (channel, time, axial position) in that order.
         """
         n, x, y = self._request(*ctzxy)
-        return self.tiffile.pages[n][x, y]
+        return self.datasource.pages[n].asarray()[x, y]
 
     def cleanup(self):
         self.reader.close()

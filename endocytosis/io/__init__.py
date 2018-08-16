@@ -29,6 +29,3 @@ class IO(object):
             self.cleanup()
         except AttributeError:
             pass
-
-    def cleanup(self):
-        self._file.close()

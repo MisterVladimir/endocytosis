@@ -19,12 +19,35 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-from collections import MutableSequence, Callable
+from collections import OrderedDict
 
 from endocytosis.io import IO
 
 
-class BaseImageRequest(MutableSequence, Callable):
+class IntIndexDict(OrderedDict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            key = list(self.keys())[key]
+            return super().__getitem__(key)
+        elif isinstance(key, slice):
+            key = list(self.keys())[key]
+            return [OrderedDict.__getitem__(self, k) for k in key]
+        else:
+            return super().__getitem__(key)
+
+    def __setitem__(self, key, value):
+        if isinstance(key, int):
+            key = list(self.keys())[key]
+            return super().__setitem__(key, value)
+        elif isinstance(key, slice):
+            ind = range(len(self))[key]
+            for i in ind:
+                super().__setitem__(key[i], value[i])
+        else:
+            super().__setitem__(key, value)
+
+
+class BaseImageRequest(IntIndexDict):
     """
     Used to request images from a DataSource. Call with the
     C, T, Z, X, Y dimensions of the slice of the image we want.
@@ -57,60 +80,24 @@ class BaseImageRequest(MutableSequence, Callable):
         shape : iterable
         Shape of data in CTZXY order.
         """
+        super().__init__(zip('CTZXY', [0, 0, 0, slice(None), slice(None)]))
         # TODO: make sure shape is 3 units long; otherwise, add 1s
-        self.order = order.upper()
-        self.shape = shape
-        self._positions = {'C': 0, 'T': 1, 'X': 3, 'Y': 4, 'Z': 2}
-        self._entries = [0, 0, 0, slice(None), slice(None)]
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @shape.setter
-    def shape(self, s):
-        # coerce to c, t, z, x, y order
-        c, t, z, x, y = s
-        d = {'C': c, 'T': t, 'Z': z, 'X': x, 'Y': y}
-        self._shape_dict = d
-        self._shape = [d[key] for key in self.order]
-
-    def __repr__(self):
-        d = {'order': self.order, **self._shape_dict}
-        return 'ImageRequest(order: {order}; CTZ: ({C}, {T}, {Z}))'.format(**d)
+        self.dimension_order = order.upper()
+        # shape in true order that dimensions lie within the image data
+        self.image_shape = IntIndexDict(zip(order, shape))
 
     def __setitem__(self, key, value):
-        if isinstance(value, int):
-            value = slice(slice(value, value+1, None).indices(
-                                                    self._shape[key]))
-        if isinstance(key, int):
-            # example : self[0] = slice(2,4)
-            self._entries[key] = value
-        elif isinstance(key, str):
-            if len(key) == 1:
-                # example : self['C'] = 2
-                i = self._positions[key]
-                # print (key, i)
-                self._entries[i] = value
-            elif len(key) > 1:
-                # example : self['CZ'] = (2, slice(1))
-                for i, char in enumerate(key):
-                    self[char] = value[i]
+        if isinstance(key, str) and len(key) > 1:
+            for i, k in enumerate(key):
+                super().__setitem__(k, value[i])
         else:
-            raise TypeError('Incompatible key or value for __setitem__.')
+            super().__setitem__(key, value)
 
     def __getitem__(self, key):
-        # print (key)
-        if isinstance(key, int):
-            return self._entries[key]
-        elif isinstance(key, str):
-            if len(key) == 1:
-                i = self._positions[key]
-                return self._entries[i]
-            elif len(key) > 1:
-                return [self[k] for k in key]
+        if isinstance(key, str) and len(key) > 1:
+            return [OrderedDict.__getitem__(self, k) for k in key]
         else:
-            raise TypeError('Incompatible key or value for __getitem__.')
+            return super().__getitem__(key)
 
     def __delitem__(self, key):
         raise NotImplementedError
@@ -118,17 +105,11 @@ class BaseImageRequest(MutableSequence, Callable):
     def __len__(self):
         return 5
 
-    def __contains__(self, index):
-        n = len(index)
-        return np.all(np.asarray(self.shape[:n]) - np.asarray(index) > 0)
-
     def insert(self, index, value):
         raise NotImplementedError('')
 
-    def __call__(self, key=None, value=None):
-        if key is not None and value is not None:
-            self[key] = value
-        return {'C': self[0], 'T': self[1], 'Z': self[2]}
+    def __call__(self, *ctzxy):
+        raise NotImplementedError('')
 
 
 class BaseDataSource(IO):

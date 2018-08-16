@@ -19,19 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-from abc import ABC, ABCMeta
-import h5py
-from os.path import abspath
-from copy import copy
-from scipy.optimize import minimize
-import pickle
-import tensorflow as tf
-import bioformats
+import re
 
-from endocytosis.helpers.data_structures import TrackedList
-from endocytosis.helpers.coordinate import Coordinate
-from endocytosis.contrib.gohlke import tifffile
 from endocytosis.io import IO
+from endocytosis.io.image.metadata import ijmetadata
 
 
 class ImageReader(IO):
@@ -43,4 +34,32 @@ class ImageReader(IO):
             self._load_path(path)
 
     def _load_path(self, path):
-        pass
+        if path.endswith('.tif') or path.endswith('.tiff'):
+            self._load_tif(path)
+        else:
+            raise TypeError('Not a compatible file type.')
+
+    def _load_tif(self, path):
+        from endocytosis.contrib.gohlke import tifffile
+        from endocytosis.io.image.datasources import tiff_datasource
+        # placeholder for more sophisticated metadata extraction
+        with tifffile.TiffFile(path) as tif:
+            if tif.is_imagej:
+                self.metadata = ijmetadata.to_dict(tif.filename, tif.imagej_metadata)
+            elif tif.is_ome:
+                self.metadata = tif.ome_metadata
+            else:
+                raise('')
+        md = self.metadata
+        order = md['DimensionOrder']
+        shape = [md['SizeC'], md['SizeT'], md['SizeZ'],
+                 md['SizeX'], md['SizeY']]
+        shape = list(map(int, shape))
+        request = tiff_datasource.TiffImageRequest(order, *shape)
+        self.data = tiff_datasource.TiffDataSource(path, request)
+
+    def cleanup(self):
+        try:
+            self.data.cleanup()
+        except AttributeError:
+            pass
