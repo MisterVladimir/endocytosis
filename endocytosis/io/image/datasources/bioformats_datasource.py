@@ -25,7 +25,7 @@ import bioformats
 from endocytosis.io.datasources.base_datasource import (BaseImageRequest,
                                                         BaseDataSource)
 
-
+# not tested
 class BioformatsRequest(BaseImageRequest):
     module_name = 'bioformats_datasource'
 

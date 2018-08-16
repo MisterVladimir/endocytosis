@@ -25,6 +25,7 @@ from scipy.interpolate import splrep, splev
 from numpy.lib.stride_tricks import as_strided
 from skimage.measure import EllipseModel
 # from scipy.integrate import quad
+import copy
 
 from endocytosis.helpers.iteration import current_and_next
 from endocytosis.helpers.coordinate import Coordinate
@@ -47,13 +48,13 @@ class _RectROI(_BaseROI):
         top_left = np.minimum(common[:2], common[2:4])
         bottom_right = np.maximum(common[:2], common[2:4])
         sides = bottom_right - top_left
-        self.origin = Coordinate(px=top_left)
-        self.sides = Coordinate(px=sides)
+        self._origin = Coordinate(px=top_left)
+        self._sides = Coordinate(px=sides)
         self._ctz = common[-3:]
 
     @property
     def centroid(self):
-        return self.origin + self.sides / 2
+        return self._origin + self._sides / 2
 
     @property
     def c(self):
@@ -67,9 +68,6 @@ class _RectROI(_BaseROI):
     def z(self):
         return self._ctz[2]
 
-    def asarray(self, unit='px'):
-        return np.concatenate([self.origin[unit], self.sides[unit]])
-
     @property
     def pixelsize(self):
         return self._pixelsize
@@ -80,9 +78,80 @@ class _RectROI(_BaseROI):
         self.sides.pixelsize = c
         self._pixelsize = c
 
+    @property
+    def origin(self):
+        return self._origin
+
+    @origin.setter
+    def origin(self, value):
+        assert isinstance(value, Coordinate)
+        self._origin = value
+
+    @property
+    def sides(self):
+        return self._sides
+
+    @sides.setter
+    def sides(self, value):
+        # change self.origin to maintain the rectangle same center
+        assert isinstance(value, Coordinate)
+        self._sides = value
+        self._origin -= value
+
+    def asarray(self, unit='px'):
+        return np.concatenate([self.origin[unit], self.sides[unit]])
+
+    def to_slice(self):
+        x0, y0 = self.origin['px'].astype(int)
+        dx, dy = self.sides['px'].astype(int)
+        return [slice(x0, x0 + dx), slice(y0, y0 + dy)]
+
+
+class _OvalROI(_RectROI):
+    pass
+
+
+class _RoiSet(list):
+    """
+    Creates a list out of another object, optionally filtering
+    the object with a function before passing it to list.__init__().
+    """
+    def __init__(self, li, func=lambda x: x):
+        li = func(li)
+        self.roi_class = li[0].__class__
+        super().__init__(li)
+
+
+# not teseted
+class EndocytosisRoiSet(_RoiSet):
+    """
+    Crude center of mass-based method for adding ROI to an exising
+    set of ROI capturing an endocytic event over time.
+    """
+    def augment(self, imreader, lower=0, upper=0):
+        def center_of_mass(arr, X, Y):
+            # center of mass
+            arrsum = arr.sum()
+            return np.array([(arr*X).sum()/arrsum,
+                             (arr*Y).sum()/arrsum])
+        if not lower == 0:
+            roi = copy.copy(self[0])
+            c, t, z = roi.c, roi.t, roi.z
+            roi.sides += Coordinate(px=(4, 4))
+            xsl, ysl = roi.to_slice()
+            dx, dy = roi.sides['px'].astype(int)
+            X, Y = np.mgrid[:dx, :dy]
+            for _t in range(t-1, t-lower-1, -1):
+                imdata = imreader.data.request(c, _t, z, xsl, ysl)
+                com = Coordinate(px=center_of_mass(imdata, X, Y))
+                origin = list(com['px'])
+                bottom_right = list(origin + roi.sides['px'])
+                arg = origin + bottom_right + [c, _t, z]
+                self.insert(0, self.roi_class(arg, None))
+
 
 def ROI(common, coordinates, typ):
-    number_to_roi_class = {2: _RectROI}
+    number_to_roi_class = {1: _RectROI, 2: _OvalROI}
     try:
         return number_to_roi_class[typ](common, coordinates)
     except KeyError:

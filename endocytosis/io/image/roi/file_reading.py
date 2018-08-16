@@ -46,6 +46,10 @@ class IJZipReader(Reader):
     2) http://grepcode.com/file/repo1.maven.org/maven2/gov.nih.imagej/imagej/1.47/ij/io/RoiEncoder.java 
     3) https://github.com/hadim/read-roi/ 
     4) https://github.com/DylanMuir/ReadImageJROI
+    
+    See also:
+    https://github.com/imagej/ImageJA/blob/master/src/main/java/ij/io/RoiEncoder.java and
+    https://github.com/imagej/ImageJA/blob/master/src/main/java/ij/io/RoiDecoder.java
 
     Parameters
     -----------
@@ -127,8 +131,8 @@ class IJZipReader(Reader):
         return self._data.items()
 
     def read(self, path):
+        self._data = ListDict()
         # reads all the zip files' byte streams, sends them to parsing function 
-        streams = []
         self._file = zipfile.ZipFile(path, 'r')
         filelist = [f for f in self._file.namelist() if self.regexp.match(f)]
         streams = [self._file.open(n).read() for n in filelist]
@@ -139,7 +143,7 @@ class IJZipReader(Reader):
     def _parse_bytestream(self, bs):
         """
         Pass in a list of byte data (bs=bytestream); turn them into numpy
-        arrays. 
+        arrays.
 
         Most of the info in the bytestream isn't relevant to my needs, but it
         should be straightforward to add it to self._data.
@@ -152,9 +156,6 @@ class IJZipReader(Reader):
         hdr2_offsets = hdr['hdr2_offset']
         hdr2 = np.recarray(length, self.header2_dtype, b''.join([
             b[h:h+self.header2_size] for h, b in zip(hdr2_offsets, bs)]))
-
-        self.hdr = hdr
-        self.hdr2 = hdr2
 
         name_offsets = hdr2['name_offset']
         name_lengths = hdr2['name_length']
@@ -223,6 +224,8 @@ class IJZipReader(Reader):
         return [(c[0], c[1]) if i else ([], []) for c, i in
                 zip(coords, type_mask)]
 
+    def cleanup(self):
+        self._file.close()
 
 class CSVReader(Reader):
     """

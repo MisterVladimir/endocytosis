@@ -80,22 +80,24 @@ class BaseImageRequest(IntIndexDict):
         shape : iterable
         Shape of data in CTZXY order.
         """
-        super().__init__(zip('CTZXY', [0, 0, 0, slice(None), slice(None)]))
+        super().__init__()
         # TODO: make sure shape is 3 units long; otherwise, add 1s
         self.dimension_order = order.upper()
         # shape in true order that dimensions lie within the image data
-        self.image_shape = IntIndexDict(zip(order, shape))
+        self.image_shape = IntIndexDict(zip(order, [None]*len(order)))
+        self.image_shape.update(dict(zip('CTZXY', shape)))
+        self.__setitem__('CTZXY', [0, 0, 0, slice(None), slice(None)])
 
     def __setitem__(self, key, value):
         if isinstance(key, str) and len(key) > 1:
             for i, k in enumerate(key):
-                super().__setitem__(k, value[i])
+                self.__setitem__(k, value[i])
         else:
             super().__setitem__(key, value)
 
     def __getitem__(self, key):
         if isinstance(key, str) and len(key) > 1:
-            return [OrderedDict.__getitem__(self, k) for k in key]
+            return [self.__getitem__(k) for k in key]
         else:
             return super().__getitem__(key)
 

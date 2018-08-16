@@ -67,8 +67,13 @@ class TiffImageRequest(BaseImageRequest):
             pass
         else:
             raise Exception('')
-        arr = np.array(self[:3])[:, None]
-        return (np.ravel_multi_index(arr, self.image_shape[:3])[0],
+
+        # get order of the C, T, and Z dimensions
+        order = self.dimension_order.replace('X', '').replace('Y', '')
+        arr = np.array(self[order])[:, None]
+        imshape = [self.image_shape[k] for k in order]
+        # locate their raveled index
+        return (np.ravel_multi_index(arr, imshape, order='F')[0],
                 self['X'], self['Y'])
 
 
