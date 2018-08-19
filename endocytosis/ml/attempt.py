@@ -18,8 +18,17 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+# placeholder for neural network
 
+import random
 import torch
-import torchvision
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.autograd import Variable
+import torchvision.models as models
+import numpy as np
 
-nn = torch.nn
+
+class MyModule(nn.Module):
+    def __init__(self):
+        super().__init__()

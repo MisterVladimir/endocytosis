@@ -64,7 +64,7 @@ class ImageReader(IO):
         shape = list(map(int, shape))
         if is_imagej:
             # not sure if 'YX' is correct
-            tiff_datasource.TiffImageRequest('TZCYX', *shape)
+            request = tiff_datasource.TiffImageRequest('TZCYX', *shape)
         else:
             order = md['DimensionOrder']
             request = tiff_datasource.TiffImageRequest(order, *shape)
