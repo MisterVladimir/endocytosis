@@ -23,9 +23,17 @@ import copy
 import h5py
 import weakref
 from collections import OrderedDict
+import datetime
+import json
 
 
-class ListDict(dict):
+class MissingDict(OrderedDict):
+    def __missing__(self, key):
+        self[key] = self.__class__()
+        return self[key]
+
+
+class ListDict(OrderedDict):
     def __missing__(self, key):
         self[key] = []
         return self[key]
@@ -93,12 +101,6 @@ class TrackedList(list):
 #               ('resultCode', '<i4'), ('slicesUsed', [('x', [('start', '<i4'),('stop', '<i4'),('step', '<i4')]),('y', [('start', '<i4'),('stop', '<i4'),('step', '<i4')])])]
 
 
-class MissingDict(OrderedDict):
-    def __missing__(self, key):
-        self[key] = self.__class__()
-        return self[key]
-
-
 ds_dtype = [('x', '>i4')]
 
 
@@ -164,3 +166,38 @@ class NestedDict(dict):
         source = self
         dtype = self.dtype
         return func(ret, source, dtype)
+
+
+class RoiPropsDict(OrderedDict):
+    """
+    """
+    def __init__(self, string='', *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if string:
+            up = [OrderedDict([(k, v) for k, v in item.split(': ')])
+                  for item in string.split('\n')]
+        self.update(up)
+
+    def to_IJ(self, image_name=''):
+        """
+        "{}: {}\n" format is required for ImageJ to parse into
+        java.utils.Properties object
+        """
+        add = b'Author of package for encoding ImageJ ROI: Vladimir Shteyn\n'
+
+        date = datetime.date.today().toordinal()
+        add += b'YYYYMMDD: {}-{}-{}\n'.format(date.year, date.month, date.day)
+
+        if image_name:
+            image_name = b'Image Name: {}'.format(image_name.encode('utf-8'))
+        else:
+            image_name = b''
+        add += image_name
+
+        li = ["{}: {}".format(k, v) for k, v in self.items()]
+        return '\n'.join(li).encode('utf-8') + add
+
+    def to_JSON(self, image_name=''):
+        if image_name:
+            self['image_name'] = image_name
+        return json.dumps(self)

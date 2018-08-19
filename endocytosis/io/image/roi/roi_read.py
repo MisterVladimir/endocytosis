@@ -25,10 +25,14 @@ import re
 import zipfile
 import os
 from struct import unpack
+from collections import OrderedDict
 
 from endocytosis.helpers.data_structures import ListDict
 from endocytosis.io import IO
-from endocytosis.io.image.roi import roi_type
+from endocytosis.io.image.roi import (HEADER_SIZE, HEADER2_SIZE,
+                                      HEADER_DTYPE, HEADER2_DTYPE,
+                                      COLOR_DTYPE, OPTIONS,
+                                      SUBTYPE, ROI_TYPE, COLOR_DTYPE, SELECT_ROI_PARAMS)
 from endocytosis.io.image.roi.roi_objects import ROI
 
 
@@ -38,16 +42,23 @@ class Reader(IO):
 
 class IJZipReader(Reader):
     """
-    The goal is to look like a container for Fiji ROI extracted from the
-    input path.
+    The goal is to convert ImageJ/FIJI ROI bytestreams
+    to human-readable data using python. Unlike other libraries
+    I'm aware of, here we let numpy do the heavy lifting of
+    converting bytestream to bytes, shorts, integers, and floats.
+    Strings, e.g. the ROI name, are unpacked using the struct
+    library. This information is stored as a numpy.recarray.
+    See global variables imported from roi.__init__ to understand
+    which position in the bytestream corresponds to which ROI
+    parameters.
 
-    Inspiration from :
+    Inspiration from:
     1) http://grepcode.com/file/repo1.maven.org/maven2/gov.nih.imagej/imagej/1.47/ij/io/RoiDecoder.java 
     2) http://grepcode.com/file/repo1.maven.org/maven2/gov.nih.imagej/imagej/1.47/ij/io/RoiEncoder.java 
-    3) https://github.com/hadim/read-roi/ 
+    3) https://github.com/hadim/read-roi/
     4) https://github.com/DylanMuir/ReadImageJROI
-    
-    See also:
+
+    More recent versions of the Java code:
     https://github.com/imagej/ImageJA/blob/master/src/main/java/ij/io/RoiEncoder.java and
     https://github.com/imagej/ImageJA/blob/master/src/main/java/ij/io/RoiDecoder.java
 
@@ -64,46 +75,6 @@ class IJZipReader(Reader):
     a distinct class -- then IJRoiDecoder stores ROI data in nested dictionary
     format.
     """
-    # version 1.51
-    header_size = 64
-    # version 1.50??? 64 #version 1.51???
-    header2_size = 40
-    header_dtype = np.dtype(dict(
-        names=['magic', 'version', 'type', 'top', 'left', 'bottom',
-               'right', 'n_coordinates', 'x1', 'y1', 'x2', 'y2',
-               'stroke_width', 'shape_roi_size', 'stroke_color',
-               'fill_color', 'subtype', 'options', 'style_or_ratio',
-               'arrow_head_size', 'rounded_rect_arc_size', 'position',
-               'hdr2_offset'],
-        offsets=[0, 4, 6, 8, 10, 12,
-                 14, 16, 18, 22, 26, 30,
-                 34, 36, 40,
-                 44, 48, 50, 52,
-                 53, 54, 56,
-                 60],
-        formats=[(bytes, 4), '>i2', '<i2', '>i2', '>i2', '>i2',
-                 '>i2', '>i2', '>f4', '>f4', '>f4', '>f4',
-                 '>i2', '>i2', '>i4',
-                 '>i4', '>i2', '>i2', 'i1',
-                 'i1', '>i2', '>i4',
-                 '>i4']))
-
-    header2_dtype = np.dtype(dict(
-        names=['c', 'z', 't', 'name_offset', 'name_length', 'label_color',
-               'font_size', 'opacity', 'image_size', 'float_stroke_width'],
-        offsets=[4, 8, 12, 16, 20, 24,
-                 28, 31, 32, 36],
-        formats=['>i4', '>i4', '>i4', '>i4', '>i4', '>i4',
-                 '>i2', 'i1', '>i4', '>i4']))
-    options = {'spline_fit': 1,
-               'double_headed': 2,
-               'outline': 4,
-               'overlay_labels': 8,
-               'overlay_names': 16,
-               'overlay_backgrounds': 32,
-               'overlay_bold': 64,
-               'sub_pixel_resolution': 128,
-               'draw_offset': 256}
 
     def __init__(self, regexp='.*roi$', sep=None):
         self.regexp = re.compile(regexp)
@@ -119,7 +90,7 @@ class IJZipReader(Reader):
         """
         To combine ROI lists together, or append .roi.ROI objects
         """
-        pass
+        return NotImplemented
 
     def keys(self):
         return self._data.keys()
@@ -130,17 +101,22 @@ class IJZipReader(Reader):
     def items(self):
         return self._data.items()
 
-    def read(self, path):
+    def read(self, path, pwd=None):
+        # clear old data
         self._data = ListDict()
         # reads all the zip files' byte streams, sends them to parsing function 
         self._file = zipfile.ZipFile(path, 'r')
         filelist = [f for f in self._file.namelist() if self.regexp.match(f)]
-        streams = [self._file.open(n).read() for n in filelist]
-        streams = [s for s in streams if s[:4] == b'Iout']
-        self.bytestreams = streams
-        self._parse_bytestream(streams)
+        streams = [None]*len(filelist)
+        for i, name in enumerate(filelist, 'r'):
+            with self.file.open(name) as f:
+                streams[i] = f.read()
 
-    def _parse_bytestream(self, bs):
+        # file type checking: .roi files' first four bytes encode 'Iout'
+        self.bytestreams = [s for s in streams if s[:4] == b'Iout']
+        self._parse_bytestream()
+
+    def _parse_bytestream(self):
         """
         Pass in a list of byte data (bs=bytestream); turn them into numpy
         arrays.
@@ -149,33 +125,46 @@ class IJZipReader(Reader):
         should be straightforward to add it to self._data.
         """
         # parse header data
-        length = len(bs)
-        hdr = np.recarray(length, self.header_dtype, buf=b''.join([
-            b[:self.header_size] for b in bs]))
+        length = len(self.bytestreams)
+        hdr = np.recarray(length, HEADER_DTYPE, buf=b''.join([
+            b[:HEADER_SIZE] for b in self.bytestreams]))
 
         hdr2_offsets = hdr['hdr2_offset']
-        hdr2 = np.recarray(length, self.header2_dtype, b''.join([
-            b[h:h+self.header2_size] for h, b in zip(hdr2_offsets, bs)]))
+        hdr2 = np.recarray(length, HEADER2_DTYPE, b''.join([
+            b[h:h+HEADER2_SIZE] for h, b in zip(hdr2_offsets,
+                                                self.bytestreams)]))
+
+        # no need to distinguish between 'oval' and 'ellipse'
+        # the only difference is the latter always has subpixel resolution
+        is_ellipse = hdr['subtype'] == SUBTYPE['ellipse']
+        hdr['type'][is_ellipse] = ROI_TYPE['oval']
 
         name_offsets = hdr2['name_offset']
         name_lengths = hdr2['name_length']
         # assumes characters are in ascii encoding...
-        names = self._names_from_bytestream(name_offsets, name_lengths)
+        names = self._get_names(name_offsets, name_lengths)
         # determine if subpixel resolution
         subpixel = np.logical_and(hdr['options'] //
-                                  self.options['sub_pixel_resolution'] > 0,
+                                  OPTIONS['sub_pixel_resolution'] > 0,
                                   hdr['version'] >= 222)
         # parse parameters common to all ROI
-        common = self._parse_common(hdr, hdr2, subpixel)
-        points = self._parse_points(hdr, subpixel)
+        bounding_rect, common = self._get_common(hdr, hdr2, subpixel)
+        points = self._get_points(hdr, subpixel)
+        props = self._get_roi_props(hdr['hdr2_offsets'],
+                                    hdr2['roi_props_offsets'],
+                                    hdr2['roi_props_lengths'])
 
-        for c, p, typ, name in zip(common, points, hdr['type'], names):
+        for br, com, p, pr, typ, name in zip(bounding_rect, common, points,
+                                             props, hdr['type'], names):
             if name[1]:
-                self._data[name[0]].append(ROI(c, p, typ))
+                self._data[name[0]].append(ROI(br, com, p, pr, typ))
             else:
-                self._data[name[0]] = ROI(c, p, typ)
+                self._data[name[0]] = ROI(br, com, p, pr, typ)
 
-    def _names_from_bytestream(self, offsets, lengths):
+    def _get_names(self, offsets, lengths):
+        """
+        Decode roi names from the bytestream.
+        """
         # assumes characters are in ascii encoding...
         names = ["".join(map(chr, unpack('>'+'h'*le, bs[off:off+le*2]))) for
                  bs, off, le in zip(self.bytestreams, offsets, lengths)]
@@ -187,31 +176,38 @@ class IJZipReader(Reader):
         else:
             return [[n, ''] for n in names]
 
-    def _parse_common(self, hdr, hdr2, subpixel):
-        dtype = [('x1', float), ('y1', float),
-                 ('x2', float), ('y2', float),
-                 ('c', int), ('t', int), ('z', int)]
-        result = np.zeros(len(hdr), dtype=dtype)
-
+    def _get_common(self, hdr, hdr2, subpixel):
+        coord_dtype = [('x1', float), ('y1', float),
+                       ('x2', float), ('y2', float)]
+        coords = np.zeros(len(hdr), dtype=coord_dtype)
         for a, b, c in zip(['y1', 'x1', 'y2', 'x2'],
                            ['x1', 'y1', 'x2', 'y2'],
                            ['top', 'left', 'bottom', 'right']):
             # if subpixel, use 'x1', 'y1', 'x2', 'y2'
             # otherwise use 'top', 'left', 'bottom', 'right'
             # reverses x and y axes of ImageJ
-            result[a][subpixel] = hdr[b][subpixel]
-            result[a][~subpixel] = hdr[c][~subpixel]
+            coords[a][subpixel] = hdr[b][subpixel]
+            coords[a][~subpixel] = hdr[c][~subpixel]
 
-        for key in ['c', 't', 'z']:
-            result[key] = hdr2[key]
+        d = OrderedDict(**SELECT_ROI_PARAMS['hdr'],
+                        **SELECT_ROI_PARAMS['hdr2'])
+        common_dtype = np.dtype(dict(names=list(d.keys()),
+                                     formats=list(d.values())))
+        common = np.zeros(len(hdr), dtype=common_dtype)
+        keys = list(SELECT_ROI_PARAMS['hdr'].keys())
+        common[keys] = hdr[keys]
+        keys2 = list(SELECT_ROI_PARAMS['hdr2'].keys())
+        common[keys2] = hdr2[keys2]
 
-        return result
+        return coords, common
 
-    def _parse_points(self, hdr, subpixel):
-        types = [roi_type['polygon'], roi_type['freeline'],
-                 roi_type['polyline'], roi_type['freehand']]
+    def _get_points(self, hdr, subpixel):
+        # multi-point and individual points not yet implemented,
+        # but in the works
+        types = [ROI_TYPE['polygon'], ROI_TYPE['freeline'],
+                 ROI_TYPE['polyline'], ROI_TYPE['freehand']]
         type_mask = np.isin(hdr['type'], types)
-        size = self.header_size
+        size = HEADER_SIZE
         coords = [[unpack('>'+n*'f', bs[size+8*n:size+12*n]),
                    unpack('>'+n*'f', bs[size+4*n:size+8*n])]
                   if s else [unpack('>'+n*'h', bs[size+2*n:size+4*n]) + le,
@@ -221,11 +217,43 @@ class IJZipReader(Reader):
                                               hdr['left'],
                                               subpixel,
                                               self.bytestreams)]
-        return [(c[0], c[1]) if i else ([], []) for c, i in
-                zip(coords, type_mask)]
+        return np.array([(c[0], c[1]) if i else ([], []) for c, i in
+                         zip(coords, type_mask)]).T
+
+    def _get_roi_props(self, hdr2_offsets, roi_props_offsets,
+                       roi_props_lengths):
+        return [''.join(list(map(chr, unpack('>' + 'h'*le, bs[off:off+le*2]))))
+                for le, bs, off in zip(
+                roi_props_lengths, self.bytestreams, roi_props_lengths)]
+
+    def _get_point_counters(self, offsets, n_coordinates):
+        """
+        This helps parse a multi-point roi.
+
+        Point counters are ints that encode two parameters: 'positions' and
+        'counters'. They describe which c, t, z slice the point roi lies in
+        and the index of the point roi in the set, respectively. 'Position'
+        is encoded as a short in byte positions 1 and 2, and 'counter' is
+        a byte in position 3. Byte 0 is not used.
+
+        Arguments
+        -----------
+        offset: int
+        hdr['counters_offset']
+
+        n_coordinates: int
+        hdr['n_coordinates']
+        """
+        data = [unpack('>'+'hbb'*(n-1) + 'hb', bs[off+1:off+n*4])
+                for n, bs, off in zip(
+                n_coordinates, self.bytestreams, offsets)]
+        positions = [p[::3] for p in data]
+        counters = [c[1::3] for c in data]
+        return counters, positions
 
     def cleanup(self):
         self._file.close()
+
 
 class CSVReader(Reader):
     """

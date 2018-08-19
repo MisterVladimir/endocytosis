@@ -20,6 +20,16 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 
+from six import string_types
+from collections import Iterable
+
+
+def isiterable(arg):
+    # copied from
+    # https://stackoverflow.com/questions/1055360/how-to-tell-a-variable-is-iterable-but-not-a-string/44328500#44328500
+    return isinstance(arg, Iterable) and not isinstance(arg, string_types)
+
+
 def current_and_next(iterable, interval=1):
     """
     Return item at current index and the item an 'interval' array distance

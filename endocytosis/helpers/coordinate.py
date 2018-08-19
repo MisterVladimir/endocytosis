@@ -285,7 +285,8 @@ class Coordinate(dict):
             # number of pixels and passed-in pixelsize
             self._expand_units('nm', ps['nm'] * ps_nm)
         elif sum(mask) > 0 and 'px' in self.keys():
-            print('Pixelsize and physical sizes are both already set.')
+            raise AttributeError('Pixelsize and physical sizes are both'
+                                 'already set.')
 
     @property
     def ou_size(self):

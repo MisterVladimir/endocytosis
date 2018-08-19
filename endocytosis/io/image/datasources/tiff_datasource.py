@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
+import copy
 
 import endocytosis.contrib.gohlke.tifffile as tifffile
 from endocytosis.io.image.datasources.base_datasource import (BaseImageRequest,
@@ -32,31 +33,52 @@ class TiffPathFinder(PathFinder):
 
 
 class TiffImageRequest(BaseImageRequest):
-    """
-    Used to request images from a Tiff DataSource. Call with the
-    C, T, Z, X, Y dimensions of the slice of the image we want.
-
-    order: str
-        Concatenated string of image dimension order.
-    shape : iterable of length 5
-        Shape of each dimension in order CTZXY. Having a known order is helpful
-        because the (ome) tiff metadata only states the number of
-        channels, z slices, and timepoints. To get the true 'shape', one must
-        factor in the dimension order. This is done in the 'shape' property's
-        setter.
-
-    Example
-    ---------
-#    a 3-color image with 8 z slices
-    req = TiffImageRequest('TCZXY', 1, 3, 8) # must be c, t, z order
-    datasource = TiffDataSource(open_file, req)
-#    retrive 3d image in the first channel, third timepoint, and all z slices
-#    call the datasource's request method with arguments in C, T, Z order
-    z_stack = datasource.request(0,2,slice(None))
-    """
+    __doc__ = BaseImageRequest.__doc__
     module_name = 'tiff_datasource'
 
+    def _get_page_indices(self):
+        order = self.ctz_order
+        # shape of the tif image, in its DimensionOrder
+        tif_shape = [self.image_shape[k] for k in order]
+
+        # the index selfuested, stored as values in self, is rearranged to the
+        # dimension order that the tiff image is in
+        index = np.array(self[order])
+        from_ints = np.array([0 if isinstance(i, slice) else i
+                              for i in index])[:, None]
+
+        # check if any slice objects have been passed in
+        # convert any slices to lists of integers
+        is_slice = [isinstance(item, slice) for item in index]
+        n_slice_objects = sum(is_slice)
+        if n_slice_objects > 1:
+            raise TypeError('Only one slice item may be present in the '
+                            'request. {} were used.'.format(n_slice_objects))
+        elif n_slice_objects == 0:
+            as_integers = from_ints
+        else:
+            # convert slice objects to lists of integers
+            # where the index is an integer, leave a placeholder in the form
+            # of an empty list
+            from_slices = [np.arange(*j.indices(i))
+                           if isinstance(j, slice)
+                           else [] for i, j in zip(tif_shape, index)]
+            # replace the placeholders with zeros
+            length = max([len(item) for item in from_slices])
+            for i in range(len(index)):
+                if not is_slice[i]:
+                    from_slices[i] = np.zeros(length, int)
+            from_slices = np.concatenate(from_slices).reshape((-1, length))
+            # replace all the zeros with indices passed in as integers
+            as_integers = from_ints + from_slices
+        # identify the tif page data is in
+        page_indices = np.ravel_multi_index(as_integers,
+                                            tif_shape, order='C')
+        return page_indices
+
     def __call__(self, *ctzxy):
+        old_indices = copy.copy(self['CTZXY'])
+        # cache the index
         if len(ctzxy) == 5:
             self['CTZXY'] = ctzxy
         elif len(ctzxy) == 3:
@@ -66,15 +88,15 @@ class TiffImageRequest(BaseImageRequest):
             # use previous contents of self
             pass
         else:
-            raise Exception('')
-
-        # get order of the C, T, and Z dimensions
-        order = self.dimension_order.replace('X', '').replace('Y', '')
-        arr = np.array(self[order])[:, None]
-        imshape = [self.image_shape[k] for k in order]
-        # locate their raveled index
-        return (np.ravel_multi_index(arr, imshape, order='F')[0],
-                self['X'], self['Y'])
+            return None, None, None
+        try:
+            n = self._get_page_indices()
+            return n, self['X'], self['Y']
+        except (TypeError, IndexError) as e:
+            # roll back to previous request
+            if not len(ctzxy) == 0:
+                self['CTZXY'] = old_indices
+            raise e
 
 
 class TiffDataSource(BaseDataSource):
@@ -94,7 +116,7 @@ class TiffDataSource(BaseDataSource):
         (channel, time, axial position) in that order.
         """
         n, x, y = self._request(*ctzxy)
-        return self.datasource.pages[n].asarray()[x, y]
+        return self.datasource.asarray(key=n)[x, y]
 
     def cleanup(self):
-        self.reader.close()
+        self.datasource.close()

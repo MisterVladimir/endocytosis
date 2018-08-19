@@ -19,13 +19,15 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-import re
 
 from endocytosis.io import IO
-from endocytosis.io.image.metadata import ijmetadata
+from endocytosis.io.image import metadata
 
 
 class ImageReader(IO):
+    """
+    Image input/output. Currently only works for tif images.
+    """
     def __init__(self):
         super().__init__()
 
@@ -43,19 +45,29 @@ class ImageReader(IO):
         from endocytosis.contrib.gohlke import tifffile
         from endocytosis.io.image.datasources import tiff_datasource
         # placeholder for more sophisticated metadata extraction
+        is_imagej = False
         with tifffile.TiffFile(path) as tif:
             if tif.is_imagej:
-                self.metadata = ijmetadata.to_dict(tif.filename, tif.imagej_metadata)
+                self.metadata = metadata.MetaData(tif.imagej_metadata,
+                                                  'ImageJ',
+                                                  tif.filename)
+                is_imagej = True
             elif tif.is_ome:
-                self.metadata = tif.ome_metadata
+                self.metadata = metadata.MetaData(tif.imagej_metadata,
+                                                  'OME',
+                                                  tif.filename)
             else:
-                raise('')
+                raise TypeError('')
         md = self.metadata
-        order = md['DimensionOrder']
         shape = [md['SizeC'], md['SizeT'], md['SizeZ'],
                  md['SizeX'], md['SizeY']]
         shape = list(map(int, shape))
-        request = tiff_datasource.TiffImageRequest(order, *shape)
+        if is_imagej:
+            # not sure if 'YX' is correct
+            tiff_datasource.TiffImageRequest('TZCYX', *shape)
+        else:
+            order = md['DimensionOrder']
+            request = tiff_datasource.TiffImageRequest(order, *shape)
         self.data = tiff_datasource.TiffDataSource(path, request)
 
     def cleanup(self):

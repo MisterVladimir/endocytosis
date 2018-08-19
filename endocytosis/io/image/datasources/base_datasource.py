@@ -49,24 +49,25 @@ class IntIndexDict(OrderedDict):
 
 class BaseImageRequest(IntIndexDict):
     """
-    Used to request images from a DataSource. Call with the
+    Used to request images from a Tiff DataSource. Call with the
     C, T, Z, X, Y dimensions of the slice of the image we want.
+
+    Currently only 3-dimensional outputs are supported. That is,
+    only one of the arguments to self.__call__() may be a slice
+    object.
 
     order: str
         Concatenated string of image dimension order.
     shape : iterable of length 5
-        Shape of each dimension in order CTZXY. Having a known order is helpful
-        because the (ome) tiff metadata only states the number of
-        channels, z slices, and timepoints. To get the true 'shape', one must
-        factor in the dimension order. This is done in the 'shape' property's
-        setter.
+        Shape of each dimension in order CTZXY. 
 
     Example
     ---------
-#    a 3-color image with 8 z slices
-    req = TiffImageRequest('TCZXY', 1, 3, 8) # must be c, t, z order
-    datasource = TiffFileDataSource(open_file, req)
-#    retrive 3d image in the first channel, third timepoint, and all z slices
+#    a 3-color image with 8 z slices, each slice 512x512
+    req = TiffImageRequest('TCZXY', 3, 1, 8, 512, 512)
+    datasource = TiffDataSource(image_path, req)
+
+#    retrive image in the first channel, third timepoint, and all z slices
 #    call the datasource's request method with arguments in C, T, Z order
     z_stack = datasource.request(0,2,slice(None))
     """
@@ -81,10 +82,12 @@ class BaseImageRequest(IntIndexDict):
         Shape of data in CTZXY order.
         """
         super().__init__()
-        # TODO: make sure shape is 3 units long; otherwise, add 1s
-        self.dimension_order = order.upper()
-        # shape in true order that dimensions lie within the image data
-        self.image_shape = IntIndexDict(zip(order, [None]*len(order)))
+        # TODO: make sure shape is 5 units long; otherwise, add 1s
+        self.ctzxy_order = order.upper()
+        self.ctz_order = self.ctzxy_order.replace('X', '').replace('Y', '')
+        # shape of image data, in image's true dimension (channel, time, z) order
+        self.image_shape = IntIndexDict(zip(self.ctzxy_order,
+                                            [None]*len(order)))
         self.image_shape.update(dict(zip('CTZXY', shape)))
         self.__setitem__('CTZXY', [0, 0, 0, slice(None), slice(None)])
 
