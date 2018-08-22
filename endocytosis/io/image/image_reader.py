@@ -69,6 +69,7 @@ class ImageReader(IO):
             order = md['DimensionOrder']
             request = tiff_datasource.TiffImageRequest(order, *shape)
         self.data = tiff_datasource.TiffDataSource(path, request)
+        self.path = path
 
     def cleanup(self):
         try:

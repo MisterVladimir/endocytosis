@@ -23,13 +23,7 @@ import copy
 
 import endocytosis.contrib.gohlke.tifffile as tifffile
 from endocytosis.io.image.datasources.base_datasource import (BaseImageRequest,
-                                                              BaseDataSource)
-from endocytosis.io.path import PathFinder
-
-
-class TiffPathFinder(PathFinder):
-    def __init__(self, regexp=r'.*'):
-        super().__init__(regexp, 'tif')
+                                                              FileDatasource)
 
 
 class TiffImageRequest(BaseImageRequest):
@@ -39,9 +33,9 @@ class TiffImageRequest(BaseImageRequest):
     def _get_page_indices(self):
         order = self.ctz_order
         # shape of the tif image, in its DimensionOrder
-        tif_shape = [self.image_shape[k] for k in order]
+        tif_shape = np.array([self.image_shape[k] for k in order])
 
-        # the index selfuested, stored as values in self, is rearranged to the
+        # the requested index, stored as values in self, is rearranged to the
         # dimension order that the tiff image is in
         index = np.array(self[order])
         from_ints = np.array([0 if isinstance(i, slice) else i
@@ -49,7 +43,7 @@ class TiffImageRequest(BaseImageRequest):
 
         # check if any slice objects have been passed in
         # convert any slices to lists of integers
-        is_slice = [isinstance(item, slice) for item in index]
+        is_slice = tuple([isinstance(item, slice) for item in index])
         n_slice_objects = sum(is_slice)
         if n_slice_objects > 1:
             raise TypeError('Only one slice item may be present in the '
@@ -58,25 +52,25 @@ class TiffImageRequest(BaseImageRequest):
             as_integers = from_ints
         else:
             # convert slice objects to lists of integers
-            # where the index is an integer, leave a placeholder in the form
-            # of an empty list
+            # where the index is an integer, leave array of zeros
+            sl = index[is_slice]
+            sliced_dim_length = tif_shape[is_slice]
+            start, stop, step = sl.indices(sliced_dim_length)
+            length = (stop - start) // step
             from_slices = [np.arange(*j.indices(i))
                            if isinstance(j, slice)
-                           else [] for i, j in zip(tif_shape, index)]
-            # replace the placeholders with zeros
-            length = max([len(item) for item in from_slices])
-            for i in range(len(index)):
-                if not is_slice[i]:
-                    from_slices[i] = np.zeros(length, int)
+                           else np.zeros(length, int)
+                           for i, j in zip(tif_shape, index)]
             from_slices = np.concatenate(from_slices).reshape((-1, length))
             # replace all the zeros with indices passed in as integers
             as_integers = from_ints + from_slices
-        # identify the tif page data is in
+        # finally, identify the tif page data is in
         page_indices = np.ravel_multi_index(as_integers,
                                             tif_shape, order='C')
         return page_indices
 
     def __call__(self, *ctzxy):
+        # keep an old copy to roll back in case of errors
         old_indices = copy.copy(self['CTZXY'])
         # cache the index
         if len(ctzxy) == 5:
@@ -99,7 +93,7 @@ class TiffImageRequest(BaseImageRequest):
             raise e
 
 
-class TiffDataSource(BaseDataSource):
+class TiffDataSource(FileDatasource):
     module_name = 'tiff_datasource'
 
     def __init__(self, path, request):

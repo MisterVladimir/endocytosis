@@ -20,34 +20,14 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
 from collections import OrderedDict
+from abc import abstractmethod
 
 from endocytosis.io import IO
+from endocytosis.helpers.data_structures import IndexedDict
+from endocytosis.helpers.error import DatasourceError
 
 
-class IntIndexDict(OrderedDict):
-    def __getitem__(self, key):
-        if isinstance(key, int):
-            key = list(self.keys())[key]
-            return super().__getitem__(key)
-        elif isinstance(key, slice):
-            key = list(self.keys())[key]
-            return [OrderedDict.__getitem__(self, k) for k in key]
-        else:
-            return super().__getitem__(key)
-
-    def __setitem__(self, key, value):
-        if isinstance(key, int):
-            key = list(self.keys())[key]
-            return super().__setitem__(key, value)
-        elif isinstance(key, slice):
-            ind = range(len(self))[key]
-            for i in ind:
-                super().__setitem__(key[i], value[i])
-        else:
-            super().__setitem__(key, value)
-
-
-class BaseImageRequest(IntIndexDict):
+class BaseImageRequest(IndexDict):
     """
     Used to request images from a Tiff DataSource. Call with the
     C, T, Z, X, Y dimensions of the slice of the image we want.
@@ -59,7 +39,7 @@ class BaseImageRequest(IntIndexDict):
     order: str
         Concatenated string of image dimension order.
     shape : iterable of length 5
-        Shape of each dimension in order CTZXY. 
+        Shape of each dimension in order CTZXY.
 
     Example
     ---------
@@ -81,20 +61,21 @@ class BaseImageRequest(IntIndexDict):
         shape : iterable
         Shape of data in CTZXY order.
         """
-        super().__init__()
+        # default starting values
+        super().__init__(zip('CTZXY', [0, 0, 0, slice(None), slice(None)]))
         # TODO: make sure shape is 5 units long; otherwise, add 1s
         self.ctzxy_order = order.upper()
         self.ctz_order = self.ctzxy_order.replace('X', '').replace('Y', '')
-        # shape of image data, in image's true dimension (channel, time, z) order
-        self.image_shape = IntIndexDict(zip(self.ctzxy_order,
-                                            [None]*len(order)))
+        # shape of image data, in image's true dimension (channel, time, z)
+        # order
+        self.image_shape = IndexedDict(
+            zip(self.ctzxy_order, [None]*len(self.ctzxy_order)))
         self.image_shape.update(dict(zip('CTZXY', shape)))
-        self.__setitem__('CTZXY', [0, 0, 0, slice(None), slice(None)])
 
     def __setitem__(self, key, value):
         if isinstance(key, str) and len(key) > 1:
             for i, k in enumerate(key):
-                self.__setitem__(k, value[i])
+                super().__setitem__(k, value[i])
         else:
             super().__setitem__(key, value)
 
@@ -117,5 +98,47 @@ class BaseImageRequest(IntIndexDict):
         raise NotImplementedError('')
 
 
-class BaseDataSource(IO):
+class FileDataSource(IO):
+    """
+    Abstract base class.
+    """
     module_name = 'base_datasource'
+
+    @abstractmethod
+    def request(self, *ctzxy):
+        return NotImplemented
+
+# TODO: untested
+class NestedDataSource(IO):
+    """
+    Arguments
+    -----------
+    datasource: FileDataSource child class
+    """
+    module_name = 'base_datasource'
+
+    def __init__(self, data):
+        super().__init__()
+        # check that we have image data
+        if not self.__class__.has_file_source(data):
+            raise DatasourceError('No image.')
+
+    @staticmethod
+    def has_file_source(ds):
+        """
+        Recursively check whether we have a sourcefile or other image
+        dataset in the form of a numpy.ndarray.
+        """
+        if isinstance(ds, (FileDataSource, np.ndarray)):
+            return True
+        elif isinstance(ds, NestedDataSource):
+            return ds.has_source(ds)
+        else:
+            return False
+
+    @abstractmethod
+    def request(self, *ctzxy):
+        return NotImplemented
+
+    def cleanup(self):
+        self.datasource.cleanup()

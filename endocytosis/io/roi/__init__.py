@@ -35,7 +35,7 @@ COLOR_DTYPE = dtype(dict(
 HEADER_DTYPE = dtype(dict(
     names=['magic', 'version', 'type', 'top', 'left', 'bottom',
            'right', 'n_coordinates', 'x1', 'y1', 'x2', 'y2',
-           'stroke_width', 'shape_roi_size', 'stroke_color'
+           'stroke_width', 'shape_roi_size', 'stroke_color',
            'fill_color', 'subtype', 'options', 'arrow_style', 'aspect_ratio',
             # point_type: (0=hybrid, 1=crosshair, 2=dot, 3=circle)
            'point_type', 'arrow_head_size', 'rounded_rect_arc_size',
@@ -43,7 +43,7 @@ HEADER_DTYPE = dtype(dict(
     offsets=[0, 4, 6, 8, 10, 12,
              14, 16, 18, 22, 26, 30,
              34, 36, 40,
-             44, 48, 50, 52, 52, 
+             44, 48, 50, 52, 52,
              52, 53, 54,
              56, 60],
     formats=[(bytes, 4), '>i2', '<i2', '>i2', '>i2', '>i2',
@@ -74,7 +74,7 @@ OPTIONS = {'spline_fit': 1,
            'overlay_names': 16,
            'overlay_backgrounds': 32,
            'overlay_bold': 64,
-           'sub_pixel_resolution': 128,
+           'subpixel': 128,
            'draw_offset': 256,
            'zero_transparent': 512}
 
@@ -97,16 +97,20 @@ ROI_TYPE = {'polygon': 0,
             'point': 10}
 
 SELECT_ROI_PARAMS = {'hdr': OrderedDict([('magic', (bytes, 4)),
-                                         ('version', '>i2'),
-                                         ('type', '<i2'),
+                                         ('version', 'i2'),
+                                         ('type', 'i2'),
                                          ('stroke_width', 'i2'),
                                          ('stroke_color', COLOR_DTYPE),
                                          ('fill_color', COLOR_DTYPE),
                                          ('subtype', 'i2'),
                                          ('options', 'i2'),
-                                         ('aspect_ratio', '>f4'),
-                                         ('point_type', 'i1')]),
+                                         ('aspect_ratio', 'f4'),
+                                         ('point_type', 'i1'),
+                                         ('hdr2_offset', 'i4')]),
                      'hdr2': OrderedDict([('c', 'i4'),
                                           ('z', 'i4'),
                                           ('t', 'i4'),
-                                          ('float_stroke_width', 'f4')])}
+                                          ('float_stroke_width', 'f4'),
+                                          ('roi_props_offset', 'i4'),
+                                          ('roi_props_length', 'i4'),
+                                          ('counters_offset', 'i4')])}

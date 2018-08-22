@@ -21,17 +21,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import numpy as np
 import pandas as pd
-import re
 import zipfile
 import os
-from struct import pack, unpack
+import io
 
-from endocytosis.helpers.data_structures import ListDict
 from endocytosis.io import IO
-from endocytosis.io.image.roi import (HEADER_SIZE, HEADER2_SIZE,
-                                      HEADER_DTYPE, HEADER2_DTYPE,
-                                      OPTIONS, SUBTYPE, ROI_TYPE)
-from endocytosis.io.image.roi.roi_objects import ROI
 
 
 class Writer(IO):
@@ -62,12 +56,14 @@ class IJZipWriter(Writer):
         self.zip_path = zip_path
         self._file = zipfile.ZipFile(zip_path, 'a')
 
-    def write(self, roi, roi_name, image_name=''):
+    def write(self, roi, roi_name, image_name='', as_roi_class=None):
         """
         """
-        data = roi.to_IJ(roi_name, image_name)
-        with self._file.open(roi_name + ".roi", 'a') as f:
-            f.write(data)
+        if as_roi_class:
+            data = as_roi_class.to_IJ(roi, roi_name, image_name)
+        else:
+            data = roi.to_IJ(roi, roi_name, image_name)
+        self._file.write(io.BytesIO(data))
 
     def cleanup(self):
         self._file.close()

@@ -1,9 +1,10 @@
 [required]
+python>=3.6
 numpy
 scipy
-tensorflow
+torch>=0.4
 h5py
-pathlib
+addict
 
 [java]
 javabridge

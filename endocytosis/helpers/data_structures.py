@@ -22,21 +22,60 @@ import numpy as np
 import copy
 import h5py
 import weakref
+from addict import Dict
 from collections import OrderedDict
 import datetime
 import json
+from struct import pack
+
+from endocytosis.helpers.iteration import isiterable
 
 
-class MissingDict(OrderedDict):
-    def __missing__(self, key):
-        self[key] = self.__class__()
+class IndexedDict(Dict):
+    """
+    Allows setting and getting keys/values by passing in the key index. 
+
+    We cannot use an integer key to set a value to None. The workaround is to
+    use a key of type slice and an iterable containing None:
+    >>> d = IndexedDict()
+    >>> d['a'] = 0
+    >>> d.iloc(slice(1), [None])
+    >>> d
+    {'a': None}
+    """
+    def _get_with_int(self, key, value):
         return self[key]
 
+    def _get_with_slice(self, key, value):
+        return [self[k] for k in key]
 
-class ListDict(OrderedDict):
-    def __missing__(self, key):
-        self[key] = []
-        return self[key]
+    def _set_with_int(self, key, value):
+        self[key] = value
+
+    def _set_with_slice(self, key, value):
+        for k, v in zip(key, value):
+            self[k] = v
+
+    def iloc(self, i, value=None):
+        try:
+            keys = list(self.keys())[i]
+        except IndexError as e:
+            raise KeyError('Key must be set via self.__setitem__ before '
+                           'referencing it via the .iloc() method.') from e
+        else:
+            method_dict = {(True, False): self._get_with_int,
+                           (True, True): self._get_with_slice,
+                           (False, False): self._set_with_int,
+                           (False, True): self._set_with_slice}
+
+            try:
+                method = method_dict[(value is None,
+                                      isiterable(keys) and isiterable(value))]
+            except KeyError as e:
+                raise TypeError(
+                    'If key is iterable, value must also be iterable.') from e
+            else:
+                return method(keys, value)
 
 
 class TrackedList(list):
@@ -85,25 +124,18 @@ class TrackedList(list):
         self._append_addable(items)
         super().extend(items)
 
-    def append(self, item): 
+    def append(self, item):
         self._append_addable(item)
         super().append(item)
 
     def insert(self, index, item):
-        self._append_addable(item) 
+        self._append_addable(item)
         super().insert(index, item)
-
-# fresultdtype=[('tIndex', '<i4'),
-#               ('fitResults', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
-#               ('fitError', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]),
-#               ('startParams', [('Ag', '<f4'),('x0', '<f4'),('y0', '<f4'),('sigma', '<f4'), ('bg', '<f4'),('Ar', '<f4'),('x1', '<f4'),('y1', '<f4'),('sigmag', '<f4'), ('br', '<f4')]), 
-#               ('subtractedBackground', [('g','<f4'),('r','<f4')]), ('nchi2', '<f4'),
-#               ('resultCode', '<i4'), ('slicesUsed', [('x', [('start', '<i4'),('stop', '<i4'),('step', '<i4')]),('y', [('start', '<i4'),('stop', '<i4'),('step', '<i4')])])]
-
 
 ds_dtype = [('x', '>i4')]
 
 
+# there must be a more elegant way of doing this?
 class NestedDict(dict):
     """
     Helper class for converting fit data from h5 format into dictionary or
@@ -173,29 +205,40 @@ class RoiPropsDict(OrderedDict):
     """
     def __init__(self, string='', *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # ugly workaround for when the last character of
+        # string.split(r'\n') is '' because the string ends in r'\n'.
+        # This is common (always the case?) for ImageJ ROI.
         if string:
-            up = [OrderedDict([(k, v) for k, v in item.split(': ')])
-                  for item in string.split('\n')]
-        self.update(up)
+            if string[:-1] == '\n':
+                string = string[:-1]
+            kv = [pair.split(': ') for pair in string.split('\n')
+                  if len(pair.split(': ')) == 2]
+            self.update(kv)
+            self.string = string
+
+            # self.update(OrderedDict([(item.split(': ')[0], item.split(': ')[1])
+            #                          for item in string.split('\n')]))
 
     def to_IJ(self, image_name=''):
         """
-        "{}: {}\n" format is required for ImageJ to parse into
-        java.utils.Properties object
+        "{}: {}\n" format allows ImageJ to parse ROI properties and store them
+        as a java.utils.Properties object.
         """
-        add = b'Author of package for encoding ImageJ ROI: Vladimir Shteyn\n'
+        add = r'Software: https://github.com/MisterVladimir/fiji_utils'+'\n'
 
-        date = datetime.date.today().toordinal()
-        add += b'YYYYMMDD: {}-{}-{}\n'.format(date.year, date.month, date.day)
+        date = datetime.date.today()
+        date = date.year, date.month, date.day
+        add += 'YYYYMMDD: {}-{}-{}\n'.format(*date)
 
         if image_name:
-            image_name = b'Image Name: {}'.format(image_name.encode('utf-8'))
+            image_name = 'Image Name: {}'.format(image_name)
         else:
-            image_name = b''
+            image_name = ''
         add += image_name
 
         li = ["{}: {}".format(k, v) for k, v in self.items()]
-        return '\n'.join(li).encode('utf-8') + add
+        as_string = '\n'.join(map(str, li)) + '\n' + add
+        return pack('>' + 'h'*len(as_string), *tuple(map(ord, as_string)))
 
     def to_JSON(self, image_name=''):
         if image_name:

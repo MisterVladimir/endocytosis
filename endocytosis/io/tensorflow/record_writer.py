@@ -25,6 +25,9 @@ from endocytosis.io import IO
 
 
 class RecordWriter(IO):
+    """
+    Saves image
+    """
     def __init__(self, image_reader, roi_reader, **options):
         super().__init__()
 

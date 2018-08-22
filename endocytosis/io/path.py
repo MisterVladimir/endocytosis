@@ -20,8 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import os
 import re
+from addict import Dict
 
-from endocytosis.helpers.data_structures import ListDict
+from endocytosis.helpers.data_structures import IndexedDict
 from endocytosis.helpers.iteration import current_and_next
 
 
@@ -42,7 +43,7 @@ class PathFinder(object):
     def __init__(self, regexp=r'.*', extension=None):
         self.extension = extension
         self.regexp = regexp
-        self.data = {k: ListDict() for k in self.extension_regexp.keys()}
+        self.data = Dict()
 
     def __getitem__(self, key):
         return self.data[key]
@@ -66,22 +67,19 @@ class PathFinder(object):
             folder = os.path.dirname(path)
             if splitpath[-1] == 'csv':
                 csv_path, metadata_path = self._get_csv_metadata_path(path)
-                filenames = (csv_path, metadata_path)
+                filenames = [(csv_path, metadata_path)]
                 data_key = 'csv'
             elif splitpath[-1] == 'json' and splitpath[-2] == 'csv':
                 csv_path, metadata_path = self._get_csv_metadata_path(
                     "{}".format(os.path.extsep).join(splitpath[:-1]))
-                filenames = (csv_path, metadata_path)
+                filenames = [(csv_path, metadata_path)]
                 data_key = 'csv'
 
             elif splitpath[-1] == 'zip':
-                filenames = (os.path.basename(path), )
+                filenames = [(os.path.basename(path), )]
                 data_key = 'zip'
 
-            self.data[data_key][folder].append(filenames)
-            return filenames
-
-        # path is a path
+        # path is a directory
         elif ext is not None:
             folder = path
             if ext in ('csv', '.csv'):
@@ -95,9 +93,6 @@ class PathFinder(object):
                 filenames = self._get_filenames(folder, ext)
                 data_key = ext
 
-            self.data[data_key][folder] += filenames
-            return filenames
-
         elif ext is None:
             raise TypeError('Please set extension for folder name arguments.')
 
@@ -107,7 +102,19 @@ class PathFinder(object):
                             ' files.'.format(path, list(
                                 self.extension_regexp.keys())))
 
+        # add data to self
+        if isinstance(self.data[data_key][folder], list):
+            self.data[data_key][folder] += filenames
+        else:
+            self.data[data_key][folder] = []
+            self.data[data_key][folder] += filenames
+
+        return filenames
+
     def _get_csv_metadata_path(self, csv_path):
+        """
+        Given a CSV file name, find its associated metadata.
+        """
         return NotImplemented, NotImplemented
 
     def _get_csv_filenames(self, folder):
@@ -129,6 +136,20 @@ class PathFinder(object):
         return [(csv, next(li)) for csv in iter(li)]
 
     def _get_filenames(self, folder, extension):
+        """
+        If it's not a CSV file with metadata, we can default to what is
+        basically a glob.glob replacement.
+        """
         regexp = re.compile(self.regexp + self.extension_regexp[extension])
         filenames = os.listdir(folder)
         return [(p, ) for p in filenames if regexp.match(p)]
+
+
+class TiffPathFinder(PathFinder):
+    def __init__(self, regexp=r'.*'):
+        super().__init__(regexp, 'tif')
+
+
+class ZipFinder(PathFinder):
+    def __init__(self, regexp=r'.*'):
+        super().__init__(regexp, 'zip')
