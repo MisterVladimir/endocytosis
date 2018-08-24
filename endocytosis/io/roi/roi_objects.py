@@ -40,9 +40,12 @@ from endocytosis.io.roi import (HEADER_SIZE, HEADER2_SIZE,
 # TODO: latest version not tested
 
 class BaseROI(ABC):
+    # implement in child classes
     roi_type = None
+    compatible_roi = []
+    skipped_fields = {'hdr': [], 'hdr2': []}
 
-    def __init__(self, common, points, props, from_ImageJ=True):
+    def __init__(self, common, props, from_ImageJ=True):
         # populate properties common to all ROI into a numpy array
         # this makes it convenient to later export self as an ImageJ bytestream
         if from_ImageJ:
@@ -66,17 +69,52 @@ class BaseROI(ABC):
                 self.select_params[k] = v
 
         self.roi_props = props
-        self._top_left = None
-        self._sides = None
-        self._pixelsize = None
+        # self._top_left = None
+        # self._sides = None
+        # self._pixelsize = None
+
+    def _set_bounding_rect(self, br):
+        # ensures that origin is top left corner of the rectangle
+        top_left = np.minimum(br[:2], br[2:], dtype='f4')
+        bottom_right = np.maximum(br[:2], br[2:], dtype='f4')
+        sides = bottom_right - top_left
+        self._top_left = Coordinate(px=top_left)
+        self._sides = Coordinate(px=sides)
+
+    @property
+    def top_left(self):
+        return self._top_left
+
+    @top_left.setter
+    def top_left(self, value):
+        assert isinstance(value, Coordinate)
+        self._top_left = value
+
+    @property
+    def sides(self):
+        return self._sides
+
+    @sides.setter
+    def sides(self, value):
+        # change self.top_left to maintain the bounding rectangle's center
+        assert isinstance(value, Coordinate)
+        self._sides = value
+        self._top_left -= value
+
+    @property
+    def centroid(self):
+        return self._top_left + self._sides / 2
+
+    def _encode_points(self):
+        raise NotImplementedError('')
 
     @property
     def points(self):
-        return NotImplemented
+        raise NotImplementedError('')
 
     @points.setter
     def points(self, value):
-        return NotImplemented
+        raise NotImplementedError('')
 
     @property
     def roi_props(self):
@@ -91,10 +129,6 @@ class BaseROI(ABC):
         else:
             raise TypeError('roi_props may only be set with a string, bytes'
                             'or dictionary.')
-
-    @property
-    def centroid(self):
-        return self._top_left + self._sides / 2
 
     @property
     def ctz(self):
@@ -114,15 +148,7 @@ class BaseROI(ABC):
 
     @property
     def subpixel(self):
-        sp = all(np.isclose(np.ceil(self._top_left['px']),
-                            self._top_left['px']))
-        if not sp:
-            self.select_params['options'] = \
-                self.select_params['options'] | OPTIONS['subpixel']
-        else:
-            self.select_params['options'] = \
-                self.select_params['options'] & ~OPTIONS['subpixel']
-        return sp
+        return self.select_params['options'] & OPTIONS['subpixel']
 
     @property
     def options(self):
@@ -197,8 +223,11 @@ class BaseROI(ABC):
         name = list(map(ord, list(name)))
         return pack('>' + 'h'*len(name), *name)
 
-    @classmethod
     @abstractmethod
+    def _encode_points(self):
+        pass
+
+    @classmethod
     def to_IJ(cls, roi, name, image_name=''):
         """
         Organizes ROI information common to all ROI types. Child classes
@@ -256,7 +285,7 @@ class BaseROI(ABC):
         # name is stored as shorts
         encoded_name = cls._encode_name(name)
         hdr2['name_offset'] = hdr['hdr2_offset'] + HEADER2_SIZE
-        hdr2['name_length'] = len(encoded_name)
+        hdr2['name_length'] = len(encoded_name)//2
 
         # set roi properties (text at the end of .roi file)
         roi_props = roi.roi_props.to_IJ(image_name)
@@ -264,10 +293,30 @@ class BaseROI(ABC):
             len(encoded_name)
         hdr2['roi_props_length'] = len(roi_props)
 
-        return hdr, hdr2, encoded_name, roi_props
+        if roi.__class__ == cls:
+            pass
+        elif roi.roi_type in cls.compatible_roi or \
+                SUBTYPE[roi.select_params['subtype']] in cls.compatible_roi:
+            hdr[cls.skipped_fields['hdr']] = 0
+            hdr2[cls.skipped_fields['hdr2']] = 0
+            hdr['type'] = ROI_TYPE[cls.roi_type]
+            if roi.subpixel:
+                hdr2['subtype'] = SUBTYPE['ellipse']
+        else:
+            raise TypeError("{} is not compatible with {}'s to_IJ() "
+                            "method.".format(roi.__class__, cls))
+
+        encoded_points = roi._encode_points()
+
+        return (hdr.tobytes() + encoded_points + b'\x00\x00\x00\x00' +
+                hdr2.tobytes() + encoded_name + roi_props)
 
 
-class RectROI(BaseROI):
+class NonTextROI(BaseROI):
+    pass
+
+
+class RectROI(NonTextROI):
     """
     Parameters
     -----------
@@ -280,103 +329,120 @@ class RectROI(BaseROI):
                       'hdr2': ['overlay_label_color', 'overlay_font_size',
                                'image_opacity', 'image_size',
                                'float_stroke_width']}
+    compatible_roi = ['oval', 'ellipse']
 
-    def __init__(self, bounding_rect, common, points, props='',
-                 from_ImageJ=True):
-        super().__init__(common, points, props, from_ImageJ)
+    def __init__(self, bounding_rect, common, props='', from_ImageJ=True,
+                 **kwargs):
+        super().__init__(common, props, from_ImageJ)
         self._set_bounding_rect(bounding_rect)
 
     def _encode_points(self):
         return b''
 
-    def _set_bounding_rect(self, br):
-        # ensures that origin is top left corner of the rectangle
-        top_left = np.minimum(br[:2], br[2:], dtype='f4')
-        bottom_right = np.maximum(br[:2], br[2:], dtype='f4')
-        sides = bottom_right - top_left
+
+class PointContainingROI(NonTextROI):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._points = None
+
+    def _update_bounding_rect(self):
+        pts = np.array([c['px'] for c in self._points])
+        top_left = pts.min(axis=0)
+        sides = pts.max(axis=0) - top_left
         self._top_left = Coordinate(px=top_left)
         self._sides = Coordinate(px=sides)
 
-    @property
-    def top_left(self):
-        return self._top_left
+    def _set_points(self, pts):
+        def rollback():
+            self._points = old_points
 
-    @top_left.setter
-    def top_left(self, value):
-        assert isinstance(value, Coordinate)
-        self._top_left = value
+        old_points = copy.copy(self._points)
+        self._points = [Coordinate(**c) if isinstance(c, Coordinate)
+                        else Coordinate(px=c) for c in pts]
+        ps = filter(lambda x: getattr(x, 'pixelsize'), self._points)
 
-    @property
-    def sides(self):
-        return self._sides
+        try:
+            prev = next(ps)
+        except StopIteration:
+            # empty iterator -> no pixelsizes set in self._points
+            pass
+        else:
+            # make sure all points whose pixelsize property is not None
+            # have the same pixelsize
+            for p in ps:
+                if not p == prev:
+                    rollback()
+                    raise AttributeError('Not all pixelsizes in self._points '
+                                         'are equal. Rolling back')
+                prev = p
 
-    @sides.setter
-    def sides(self, value):
-        # change self.top_left to maintain the rectangle same center
-        assert isinstance(value, Coordinate)
-        self._sides = value
-        self._top_left -= value
-
-    @property
-    def points(self):
-        raise NotImplementedError('')
-
-    def asarray(self, unit='px'):
-        return np.concatenate([self._top_left[unit], self._sides[unit]])
-
-    @classmethod
-    def to_IJ(cls, roi, name, image_name=''):
-        hdr, hdr2, name, props = \
-            super(RectROI, cls).to_IJ(roi, name, image_name)
-        if not roi.__class__ == cls:
-            hdr[cls.skipped_fields['hdr']] = 0
-            hdr2[cls.skipped_fields['hdr2']] = 0
-            hdr['type'] = ROI_TYPE[cls.roi_type]
-
-        return (hdr.tobytes() + b'\x00\x00\x00\x00' + hdr2.tobytes() +
-                name + props)
+            try:
+                # also sets pixelsizes of every element in self._points
+                self.pixelsize = prev
+            except AttributeError as e:
+                rollback()
+                raise AttributeError('Cannot set pixelsize from self._points.'
+                                     'Rolling back') from e
 
 
-class EllipseROI(RectROI):
+class EllipseROI(PointContainingROI):
     """
+
+    kwargs
+    -------
+    Must contain one of the following sets:
+    x1, y1, x2, y2, d: two centroid coordinates and diameter
+    aspect_ratio, width, height, (x0, y0) or (xc, yc):
+    xc, yc, a, b, theta: centroid coordinates, axis lengths and angle
+
     """
     roi_type = None
+    skipped_fields = {'hdr': ['shape_roi_size', 'arrow_style', 'point_type',
+                              'arrow_head_size', 'rounded_rect_arc_size',
+                              'position'],
+                      'hdr2': ['overlay_label_color', 'overlay_font_size',
+                               'image_opacity', 'image_size',
+                               'float_stroke_width']}
+    compatible_roi = []
 
-    def __init__(self, bounding_rect, common, points, props='',
-                 from_ImageJ=True):
-        super().__init__(bounding_rect, common, points, props, from_ImageJ)
+    def __init__(self, common, props='', from_ImageJ=True, **kwargs):
+        super().__init__(common, props, from_ImageJ)
         # self.select_params['subtype'] = SUBTYPE['ellipse']
-        if not self.select_params['options'] & OPTIONS['subpixel']:
-            ratio = self.sides['px'] / np.roll(self.sides['px'], 1)
-            # aspect ratio = minor / major length
-            self.select_params['aspect_ratio'] = np.min(ratio)
-            self.roi_type = 'oval'
-        else:
-            self.roi_type = 'freehand'
-
         self.vertices = 72
+        if self.subpixel:
+            self.roi_type = 'freehand'
+        else:
+            self.roi_type = 'oval'
+
+        if from_ImageJ:
+            self._set_bounding_rect(kwargs['bounding_rect'])
+            if self.subpixel:
+                self._set_points(kwargs['points'])
+                ratio = self.sides['px'] / np.roll(self.sides['px'], 1)
+                # aspect ratio = minor / major length
+                self.aspect_ratio = np.min(ratio)
+
+        if 'points' in kwargs.keys() and any(kwargs['points']):
+            self._set_points(kwargs['points'])
+            self._update_bounding_rect()
+            self._calculate_aspect_ratio()
+
+        else:
+            if self.select_params['aspect_ratio']:
+                kwargs['aspect_ratio'] = self.select_params['aspect_ratio']
+            # determine whether it's x0, y0 or xc, yc
+            self._calculate_points(**kwargs)
 
     def _encode_points(self):
-        # need to implement if self.subpixel
         if self.subpixel:
-            return b''
+            raise NotImplementedError('')
         else:
             return b''
 
-    @property
-    def angle(self):
-        return np.arctan2(*self.sides['px']) * 180.0 / np.pi
-
-    @property
-    def aspect_ratio(self):
-        return self.select_params['aspect_ratio']
-
-    @property
-    def points(self):
-        return ([], [])
-
-    def _calculate_points(self):
+    def _calculate_points(self, **kwargs):
         # untested
+        # for calculating points from bounding rectangle + aspect ratio
         beta1 = np.array([2*i*np.pi/self.vertices for
                           i in range(self.vertices)])
         major = np.hypot(*self.sides['px'])
@@ -394,23 +460,46 @@ class EllipseROI(RectROI):
         else:
             return [Coordinate(px=p) for p in points]
 
+    @property
+    def points(self):
+        if self.subpixel:
+            return self._points
+        else:
+            raise NotImplementedError('')
 
-class PolygonROI(BaseROI):
+    @property
+    def angle(self):
+        # not sure if this is correct
+        return np.arctan2(*self.sides['px']) * 180.0 / np.pi
+
+    @property
+    def aspect_ratio(self):
+        return self.select_params['aspect_ratio']
+
+    def _calculate_aspect_ratio(self):
+        """
+        Calculate aspect ratio from...
+        """
+        pass
+
+    @aspect_ratio.setter
+    def aspect_ratio(self, value):
+        self.select_params['aspect_ratio'] = value
+
+
+class PolygonROI(PointContainingROI):
     roi_type = 'polygon'
 
-    def __init__(self, bounding_rect, common, points, props='',
-                 from_ImageJ=True):
-        super().__init__(common, points, props, from_ImageJ)
+    def __init__(self, common, points, props='', from_ImageJ=True, **kwargs):
+        super().__init__(common, props, from_ImageJ)
         if from_ImageJ:
-            points = self._adjust_ImageJ_points(points, bounding_rect)
+            points = self._adjust_ImageJ_points(points, 
+                                                kwargs['bounding_rect'])
         self._set_points(points)
-
-    def _update_bounding_rect(self):
-        pts = np.array([c['px'] for c in self._points])
-        top_left = pts.min(axis=0)
-        sides = pts.max(axis=0) - top_left
-        self._top_left = Coordinate(px=top_left)
-        self._sides = Coordinate(px=sides)
+        if 'bounding_rect' in kwargs.keys():
+            self._set_bounding_rect(kwargs['bounding_rect'])
+        else:
+            self._update_bounding_rect()
 
     def _adjust_ImageJ_points(self, pts, bounding_rect):
         """
@@ -421,54 +510,16 @@ class PolygonROI(BaseROI):
         if self.subpixel:
             return pts
         else:
-            return pts + bounding_rect[:2][0].view('2i2')
-
-    def _set_points(self, pts):
-        def rollback():
-            self._points = old_points
-            self._update_bounding_rect()
-
-        old_points = copy.copy(self._points)
-        self._points = [Coordinate(**c) if isinstance(c, Coordinate)
-                        else Coordinate(px=c) for c in pts]
-        ps = filter(lambda x: getattr(x, 'pixelsize'), self._points)
-
-        try:
-            prev = next(ps)
-        except StopIteration:
-            # empty iterator -> no pixelsizes set in self._points
-            pass
-        else:
-            # make sure all points whose pixelsize property is not None
-            # have the same pixelsize
-            for p in ps:
-                if p == prev:
-                    pass
-                else:
-                    rollback()
-                    raise AttributeError('Not all pixelsizes in self._points '
-                                         'are equal. Rolling back')
-                prev = p
-
-            try:
-                # also sets pixelsizes of every element in self._points
-                self.pixelsize = prev
-            except AttributeError as e:
-                rollback()
-                raise AttributeError(
-                    *e.args, message='Cannot set pixelsize from self._points.'
-                    'Rolling back')
-
-        self._update_bounding_rect()
+            return pts + bounding_rect[:2].astype(int)
 
     def _encode_points(self):
-        # need to implement if self.subpixel
+        arr = np.array([p['px'] for p in self._points])
         if self.subpixel:
-            return np.array([p['px'] for p in self.points])
+            arr_sub = arr
         else:
-            return np.array(
-                [p['px'] for p in self.points] - self._top_left['px'],
-                dtype=np.int16)
+            arr_sub = np.zeros_like(arr)
+        arr_nonsub = (arr - self._top_left['px']).astype(np.int16)
+        return arr_sub.tobytes('F') + arr_nonsub.tobytes('F')
 
     @property
     def top_left(self):
@@ -530,7 +581,7 @@ class FreeLineROI(PolygonROI):
     roi_type = 'freeline'
 
 
-class TextROI(object):
+class TextROI(BaseROI):
     """
     notes to self:
     copied from the ImageJ Java code
@@ -575,19 +626,13 @@ def ROI(bounding_rect, common, points, props, typ, from_ImageJ=True):
                            ROI_TYPE['freeline']: FreeLineROI,
                            ROI_TYPE['polyline']: PolyLineROI,
                            ROI_TYPE['freehand']: FreeLineROI}
-    # try:
     if common['subtype'] == SUBTYPE['ellipse']:
-        return EllipseROI(bounding_rect, common, points, props, from_ImageJ)
+        return EllipseROI(common=common, props=props, from_ImageJ=from_ImageJ,
+                          bounding_rect=bounding_rect, points=points)
     elif common['subtype'] == SUBTYPE['text']:
-        return TextROI(bounding_rect, common, points, props, from_ImageJ)
+        return TextROI(common=common, props=props, from_ImageJ=from_ImageJ, 
+                       bounding_rect=bounding_rect, points=points)
     else:
         cls_ = number_to_roi_class[typ]
-        return cls_(bounding_rect, common, points, props, from_ImageJ)
-
-    # except KeyError as e:
-    #     try:
-    #         warnings.warn('Using abstract base class _BaseROI. Some '
-    #                       'information may be missing.')
-    #         return BaseROI(common, coordinates, props, from_ImageJ)
-    #     except:
-    #         raise e
+        return cls_(common=common, props=props, from_ImageJ=from_ImageJ, 
+                    bounding_rect=bounding_rect, points=points)

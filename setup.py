@@ -181,7 +181,7 @@ if __name__ == '__main__':
           packages=find_packages(),
           # ext_package=pkg,
           ext_modules=ext,
-          python_requires='>=3',
+          python_requires='>=3.6',
           install_requires=get_requirements('java'),
           include_package_data=True,
           author='Vladimir Shteyn',
@@ -193,4 +193,5 @@ if __name__ == '__main__':
           classifiers=[
               'Intended Audience :: Science/Research',
               'Topic :: Scientific/Engineering :: Medical Science Apps.',
-              'Programming Language :: Python :: 3.5'])
+              'Topic :: Scientific/Engineering :: Image Recognition', 
+              'Programming Language :: Python :: 3.6'])
