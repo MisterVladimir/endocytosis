@@ -23,11 +23,11 @@ from collections import OrderedDict
 from abc import abstractmethod
 
 from endocytosis.io import IO
-from endocytosis.helpers.data_structures import IndexedDict
-from endocytosis.helpers.error import DatasourceError
+from fiji_tools.helpers.data_structures import IndexedDict
+from fiji_tools.helpers.error import DatasourceError
 
 
-class BaseImageRequest(IndexDict):
+class BaseImageRequest(IndexedDict):
     """
     Used to request images from a Tiff DataSource. Call with the
     C, T, Z, X, Y dimensions of the slice of the image we want.

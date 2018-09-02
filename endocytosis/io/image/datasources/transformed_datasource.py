@@ -36,7 +36,7 @@ class TransformedDatasource(NestedDatasource):
     output_size: numpy.ndarray
     Optional. Shape of the output image. If parameter is left as 'same', do not
     resize.
-    
+
     random_crop: numpy.ndarray
     Optional. If we want to take a random crop along the image's XY dimensions,
     enter the shape of the cropped image. Cropping is done before the image is

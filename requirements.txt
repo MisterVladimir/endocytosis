@@ -5,6 +5,7 @@ scipy
 torch>=0.4
 h5py
 addict
+fiji_tools
 
 [java]
 javabridge

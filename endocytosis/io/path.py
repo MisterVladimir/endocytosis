@@ -22,10 +22,10 @@ import os
 import re
 from addict import Dict
 
-from endocytosis.helpers.data_structures import IndexedDict
-from endocytosis.helpers.iteration import current_and_next
+from fiji_tools.helpers.data_structures import IndexedDict
+from fiji_tools.helpers.iteration import current_and_next
 
-
+# TODO: get rid of this?
 class PathFinder(object):
     """
     Parameters

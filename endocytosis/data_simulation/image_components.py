@@ -29,13 +29,13 @@ from scipy.optimize import minimize
 from collections import Callable
 
 import endocytosis.contrib.gohlke.psf as psf
-from endocytosis.helpers.data_structures import TrackedList, ListDict
-from endocytosis.helpers.coordinate import Coordinate
-from endocytosis.helpers.decorators import methdispatch
+from fiji_tools.helpers.data_structures import TrackedList
+from fiji_tools.helpers.coordinate import Coordinate
+from fiji_tools.helpers.decorators import methdispatch
 
-__all__ = [PSFFactory, FieldOfView, Cell, Spot]
+__all__ = [PSFFactory, FieldOfView, Cell]
 
-
+# unfinished stuff
 class PSFModelFactory(type):
     """
     Metaclass
@@ -137,7 +137,7 @@ class PSFModelGaussian2D(PSFModelParent):
         model.
 
         coordinate: Coordinate2D
-        Location of the spot center within the output image. Coordinate2D(0,0)
+        Location of the spot center within the output image. (0,0)
         is the top left corner.
 
         size: tuple
@@ -168,7 +168,7 @@ class PSFModelGaussian2D(PSFModelParent):
 
         Whatever the source, data should be raw microscopy data in uint16.
 
-        pixelsize: Coordinate1D
+        pixelsize: Coordinate
         If left as None, assume pixel size is 100nm.
         """
         px = mdh['pixelsize']['x']
@@ -360,7 +360,7 @@ class NoiseModel(ImageComponent):
 
 
 class GaussianSpot2D(Spot):
-    _model_cls = GaussianSpot2D
+    _model_cls = 'GaussianSpot2D'
 
     def __init__(self, coordinate, parent=None,
                  sigma=None, A=None, model=None):
@@ -381,8 +381,8 @@ class GaussianSpot2D(Spot):
         """
         self.rendered = True
         relative_coord = self.coordinate - (X[0, 0], Y[0, 0])
-        size = Coordinate2D(X[-1, -1] - X[0, 0], X[-1, -1] - X[0, 0],
-                            self.coordinate.units)
+        size = Coordinate(X[-1, -1] - X[0, 0], X[-1, -1] - X[0, 0],
+                          self.coordinate.units)
         # coordinate, size, pixelsize=None
         self._prev_render = self.model.render(coord, size, self.pixelsize)
         return self._prev_render
