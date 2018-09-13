@@ -1,30 +1,38 @@
 endocytosis
 ==================
 **Author**: Vladimir Shteyn 
+
 **GitHub**: [GitHub](https://github.com/mistervladimir)
+
 **LinkedIn**: [LinkedIn](https://www.linkedin.com/in/vladimir-shteyn/)
 
-This is a work in progress. More 'How To'-type of information will be
-provided once this is in a working state. That said, the eventual goal is
-to segment fluorescently-labeled endocytic proteins imaged on a confocal
-microscope using machine learning techniques. (Other particle tracking has
-been tried, but these require manual filtering of the data, which is labor
-intensive). As I'm a novice when it comes to machine learning (ML), my
-first aim is to teach myself ML-based techniques, practicing on simulated
-data e.g. point spread function models' images placed in a Poisson noise
-background. It may be possible to use simulated to also train the
-algorithm for actually detecting objects of interest in the microscopy
-images. 
+Introduction
+------------------
+This is a work in progress. More 'How To Use This Software'-type of information will be provided once this is in a more-complete state. That said, the eventual goal is to segment timelapse images (videos) of fluorescently-labeled endocytic proteins generated on a confocal microscope using machine learning techniques. (Other particle tracking methods have been tried, but these require extensive follow-up manual cleaning. In fact, it is this manually-cleaned data that will serve as ground truth). As I'm a novice when it comes to machine learning (ML), my first aim is to teach myself ML-based techniques, first deploying them on simulated microscopy data.
+
+Single molecule switching (SMS, otherwise known as [PALM](https://en.wikipedia.org/wiki/Photoactivated_localization_microscopy) or STORM) data may serve as a good heuristic for simulateable data. This is relatively easy to do: each object is a diffracion-limited spot (a [point spread function (PSF)](https://en.wikipedia.org/wiki/Point_spread_function)) modeled by a 2d Gaussian. EMCCD camera noise too may be modeled and serves as background for the randomly-placed Gaussian spots. While SMS data is typically in timelapse form, perhaps it would be easier to first segment objects as if frames were independent. 
+
 
 Prerequisites
 ------------------
+[required]
+
 numpy
+
 scipy
+
 tensorflow
+
 h5py
 
+fijitools
+
+
+
 [optional]
+
 javabridge
+
 python-bioformats
 
 Instalation
@@ -40,4 +48,5 @@ Acknowledgments
 ------------------
 Many thanks to David Baddeley, Kenny Chung, and Rui Ma, my former colleagues
 at Yale West Campus Nanobiology Institute who have helped me learn math,
-statistics, and computer programming. Also a thanks to Jo
+statistics, and computer programming. Also a thanks to Joël Lemière, who spent
+several years generating the ground truth data.
