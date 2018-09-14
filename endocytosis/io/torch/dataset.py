@@ -50,20 +50,15 @@ class EndocytosisDataset(Dataset, IO):
     """
     For loading the Endocytosis dataset.
     ********************************************************************
-    Note that if shuffling is turned on, ROI served up by the
-    __getitem__ method of this class lose their time-dependent
-    ordering. This class is simply for identifying the 'objectness'
-    of a region like in Faster R-CNN. It may be a future consideration
-    to have each ROI/image pair represented by a single
-    torch.utils.data.Dataset and then link such Datasets with a
-    ConcatDataset.
     ********************************************************************
 
     Parameters
     -----------
     source: hdf5 File or Group
+    hyp: addict.Dict
+    Hyperparameters. 
     """
-    def __init__(self, source):
+    def __init__(self, source, hyp):
         super().__init__()
         self.source = source
         # hyperparameters

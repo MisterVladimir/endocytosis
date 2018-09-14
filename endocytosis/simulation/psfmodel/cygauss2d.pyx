@@ -39,8 +39,9 @@ cdef double objective(double A, double sigma, double x, double y,
                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma))**2
     return ret
 
-def model(double A, double sigma, double x, double y, 
-          double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+# why did I originally use 'def' instead of 'cdef'?
+cdef model(double A, double sigma, double x, double y, 
+           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
     
     cdef Py_ssize_t imax = X.shape[0]
     cdef Py_ssize_t jmax = X.shape[1]
@@ -50,7 +51,8 @@ def model(double A, double sigma, double x, double y,
 
     for i in range(imax):
         for j in range(jmax):
-            ret_c [:,::1] = A*np.exp(
+        # used to be ret_c [:,::1] = ... ?? not sure why
+            ret_c [i, j::1] = A*np.exp(
                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)
 
     return ret_py
