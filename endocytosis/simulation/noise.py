@@ -23,6 +23,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 
 
+# placeholders
 class AbstractNoiseModel(ABC):
     @abstractmethod
     def render(self, *args, **kwargs):

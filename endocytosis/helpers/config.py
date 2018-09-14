@@ -86,6 +86,10 @@ ccam = Dict()
 DEFAULT.CAMERA['X-9309'] = ccam
 
 
+# placeholder
+DEFAULT.SIMULATION = {}
+
+
 def load_yaml(filename):
     result = None
     with open(filename, 'r') as f:

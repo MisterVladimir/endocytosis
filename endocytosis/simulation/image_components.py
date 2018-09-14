@@ -19,29 +19,21 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-import abc
+from abc import ABC, abstractmethod
 import h5py
-import pickle
 import weakref
 import os
-from copy import copy
-from scipy.optimize import minimize
-from collections import Callable
-import numbers
-from itertools import count
-from abc import ABC
 
 from fijitools.helpers.data_structures import TrackedList
 from fijitools.helpers.coordinate import Coordinate
 from fijitools.helpers.decorators import methdispatch
-from fijitools.helpers.iteration import isiterable
 
 import endocytosis.contrib.gohlke.psf as psf
-from endocytosis.simulation.psfmodel import cygauss2d
 from endocytosis.contrib.PYME.Acquire.Hardware.Simulation import fakeCam
 from endocytosis.helpers.config import DEFAULT as cfg
 
 
+# most of this needs to be rewritten given how much the PSF model has changed
 class ImageComponent(ABC):
     """
     coordinate property is center of the object, where (0,0) is the parent
@@ -110,7 +102,7 @@ class ImageComponent(ABC):
 
         self._parent = p
 
-    @abc.abstractmethod
+    @abstractmethod
     def render(self, *args):
         pass
 
