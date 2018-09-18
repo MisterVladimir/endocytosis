@@ -56,7 +56,6 @@ class HDF5Attribute(object):
     ------------
     value: numpy.ndarray or number.Real
 
-
     h5path: str
 
     dirty: bool
@@ -91,7 +90,7 @@ class HDF5Attribute(object):
 
 class AbstractPSFModel(ABC):
     """
-    Class factory for loading PSF models saved as HDF5 files. A PSF model's
+    Loads PSF models saved as HDF5 files. The model's
     'render' method returns a numpy.ndarray whose values represent
     the image space of the PSF. If no HDF5 file is provided, we create a
     temporary file in which model data is stored. If we want to input
@@ -108,21 +107,26 @@ class AbstractPSFModel(ABC):
                                       [attribute_1]
                                        ...
                                       [attribute_n]
+                          [indices]
         [image]
 
     Each attribute is an attribute specific to this class' PSF model class,
     e.g. Gaussian2D model would contain values for amplitude ('A'),
-    standard deviation ('sigma'), and center coördinate ('x', 'y'). Attributes
-    names are in cls.model_specific_attributes. Model names are simply the
-    class' __name__.
+    standard deviation ('sigma'), and center coördinate ('x', 'y').
+    Attribute names are in cls.model_specific_attributes. Model names are
+    simply the class' __name__.
 
     Optionally, the [data] group may contain datasets on which the above
     'parameters' were based. For example, if 'parameters' were derived from
     the Gaussian2D model, fit to diffraction-limited spots in a 2D image, we
     might want to include the parameters ('A', 'sigma', etc.) of each spot as
     array datasets. Once the dataset is loaded, ['data']'s datasets are bound
-    to protected variables named after the datasets' keys. The ['image']
-    dataset in the example structure would store the image data.
+    to protected variables named after the datasets' keys.
+
+    #########################################################################
+    The ['image'] dataset in the example structure should store the cropped
+    ROI as a 3d array whose dimensions are [index, x, y].
+    #########################################################################
     """
     ndim = None
     model_specific_attributes = []
@@ -166,7 +170,7 @@ class AbstractPSFModel(ABC):
             self.save()
         self.h5file.close()
 
-    @abstracmethod
+    @abstractmethod
     def render(self, *args, **kwargs):
         pass
 
@@ -312,11 +316,15 @@ class AbstractPSFModel(ABC):
             else:
                 shape = ()
                 typ = type(attr.value)
-            self.h5file.require_dataset(attr.h5path, shape, typ)
+            try:
+                del self.h5file[attr.h5path]
+            except KeyError:
+                pass
+            self.h5file.create_dataset(attr.h5path, shape, typ)
             self.h5file[attr.h5path] = attr.value
 
 
-class PSFModelGaussian2D(AbstractPSFModel):
+class Gaussian2D(AbstractPSFModel):
     """
     """
     ndim = 2
@@ -324,7 +332,6 @@ class PSFModelGaussian2D(AbstractPSFModel):
                                  'mx', 'my', 'b']
     objective_function = cygauss2d.objective
     model_function = cygauss2d.model
-    __str__ = 'PSFModelGaussian2D'
 
     def __init__(self, h5_filename='temp.h5', save_upon_exit=True):
         super().__init__(h5_filename, save_upon_exit)
@@ -335,10 +342,12 @@ class PSFModelGaussian2D(AbstractPSFModel):
                          for a in self.model_specific_attributes])
         return "{0!s}:\n\t{1}".format(self, attrs)
 
+    def __str__(self):
+        return self.__class__.__name__ + " PSF Model"
+
     def render(self, shape, index=None):
         """
-        Returns a 2d np.ndarray containing a 2d scalar field (image) of the
-        model.
+        Returns a 2d np.ndarray containing a 2d image of the model.
 
         Parameters
         -----------
@@ -364,8 +373,8 @@ class PSFModelGaussian2D(AbstractPSFModel):
 
     def fit_model(self, index=None):
         """
-        Fits list of 2d nd.array objects to 2d-gaussian PSF model. If no
-        pixelsize is provided, use pixels as dimensions.
+        Fits images stored in the /data Dataset of self.h5file to Gaussian
+        PSFs.
         """
         data = np.atleast_3d(self.image).astype(float)
         if index:
@@ -408,6 +417,22 @@ class PSFModelGaussian2D(AbstractPSFModel):
 
     def BIC(self, data, A, sigma, x, y, mx, my, b):
         raise NotImplementedError
+
+
+class SimpleGaussian2DModel(object):
+    model_function = cygauss2d.model
+
+    def __init__(self, A, sigma, x, y, mx, my, b):
+        self.A, self.sigma, self.x, self.y, self.mx, self.my, self.b = \
+            A, sigma, x, y, mx, my, b
+
+    def render(self, shape):
+        dx, dy = shape
+        X, Y = np.mgrid[:dx, :dy]
+        raveled_im = self.model_function(self.A, self.sigma, self.x, self.y,
+                                         self.mx, self.my, self.b, X, Y)
+        return raveled_im.reshape(X.shape, dtype=np.float32)
+
 
 # not sure what to do with this for now
 # it may be useful for other models

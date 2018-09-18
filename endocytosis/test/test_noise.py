@@ -18,32 +18,19 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import unittest
 import numpy as np
-import pandas as pd
 
-from endocytosis.io import IO
-
-
-class CSVMetaData(dict):
-    """
-    Holds CSV file's metadata.
-    """
-    def __init__(self, data):
-        super().__init__()
+import endocytosis.simulation.noise as noise
 
 
-class CSVData(object):
-    pass
+__all__ = ['EMCCDNoiseModelTest']
 
 
-class CSVReader(object):
-    """
-    Summary.
-    """
-    def __init__(self, path):
-        super().__init__()
-        self._repath = path
-        self.load_from_path(path)
+class EMCCDNoiseModelTest(unittest.TestCase):
+    def setUp(self):
+        self.im = np.zeros((5, 5))
+        self.model = noise.NoiseModel()
 
-    def load_from_path(self, path):
-        return NotImplemented
+    def test_render(self):
+        self.model.render(self.im)

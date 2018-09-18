@@ -1,0 +1,8 @@
+X-7291:
+    electronsPerCount: 14.39
+    readoutNoise: 271.81
+    ADOffset: 400
+    QE: 0.87
+    numGainElements: 592
+    vbreakdown: 6.6
+    temperature: -70.

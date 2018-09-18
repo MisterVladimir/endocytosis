@@ -22,8 +22,10 @@ import numpy as np
 from addict import Dict
 import yaml
 
+from endocytosis.helpers.data_structures import YAMLDict
 
-DEFAULT = Dict()
+
+DEFAULT = YAMLDict()
 
 # for setting up datasets
 # ROI attributes
@@ -66,7 +68,7 @@ DEFAULT.TRAIN.BBOX_REG = True
 
 # Camera parameters (from spec sheet provided by manufacturer)
 # Examples:
-# Karatekin lab TIRF/widefield microscope, serial number X-7291
+# Karatekin lab TIRF/widefield microscope, Andor serial number X-7291
 # only input parameters for 17MHz, pre-amp setting 1
 kcam = Dict()
 kcam.electronsPerCount = 14.39

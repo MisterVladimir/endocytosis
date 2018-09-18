@@ -103,8 +103,19 @@ class ImageComponent(ABC):
         self._parent = p
 
     @abstractmethod
-    def render(self, *args):
-        pass
+    def _render(self, shape):
+        raise NotImplementedError('Implement in child classes.')
+
+    def render(self, shape):
+        if self.rendered and self.previous_render:
+            raise Exception('This instance has already been rendered.')
+        try:
+            self.previous_render = self._render(shape)
+        except Exception as e:
+            print('Cound not render from the model.')
+            raise Exception from e
+        else:
+            return self.coordinate, self.previous_render
 
 
 class Spot(ImageComponent):
@@ -116,39 +127,14 @@ class Spot(ImageComponent):
     def __str__(self):
         return 'Spot @ {}nm.'.format(", ".join(self.coordinate.nm))
 
-    def render(self, shape):
-        if self.rendered and self.previous_render:
-            raise Exception('This instance has already been rendered.')
-        try:
-            self.previous_render = self.psf_model.render(shape)
-        except Exception as e:
-            print('Cound not render from the model.')
-            raise Exception from e
-        else:
-            return self.coordinate, self.previous_render
+    def _render(self, shape):
+        return self.psf_model.render(shape)
 
 
+# placeholder
 class _Cell(ImageComponent):
     def __str__(self):
         return 'Cell @ {}nm.'.format(", ".join(self.coordinate.nm))
-
-    def render(self):
-        pass
-
-
-class NoiseModel(fakeCam.NoiseModel):
-    """
-    Parameters
-    -----------
-    camera_serial_number: str
-    Camera data should be set in 
-    """
-    def __init__(self, camera_serial_number):
-        kwargs = cfg.CAMERA[camera_serial_number]
-        super().__init__(**kwargs)
-
-    def render(self, im):
-        return self.noisify(im)
 
 
 class _FieldOfView(object):

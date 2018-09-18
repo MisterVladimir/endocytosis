@@ -18,24 +18,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+import unittest
 
-import numpy as np
-from abc import ABC, abstractmethod
+import endocytosis.simulation.psfmodel as psfmodel
 
-from endocytosis.contrib.PYME.Acquire.Hardware.Simulator import fakeCam
-from endocytosis.config import DEFAULT as cfg
-
-
-class NoiseModel(fakeCam.NoiseModel):
-    """
-    Parameters
-    -----------
-    camera_serial_number: str
-    Camera data should be set in 
-    """
-    def __init__(self, camera_serial_number):
-        kwargs = cfg.CAMERA[camera_serial_number]
-        super().__init__(**kwargs)
-
-    def render(self, im):
-        return self.noisify(im)
