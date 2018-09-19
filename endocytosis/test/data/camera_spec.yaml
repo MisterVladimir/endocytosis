@@ -1,0 +1,8 @@
+!YAMLCameraSpec
+EM Gain On: !YAMLDict
+  10MHz: !YAMLDict
+    3: !YAMLDict {TrueEMGain: 9.0, electronsPerCount: 12.0, readoutNoise: 200.0}
+  17MHz: !YAMLDict
+    1: !YAMLDict {TrueEMGain: 10.0, electronsPerCount: 15.0, readoutNoise: 250.0}
+    3: !YAMLDict {TrueEMGain: 12.0, electronsPerCount: 11.0, readoutNoise: 150.0}
+---

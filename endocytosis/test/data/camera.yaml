@@ -1,8 +1,34 @@
-X-7291:
-    electronsPerCount: 14.39
-    readoutNoise: 271.81
-    ADOffset: 400
-    QE: 0.87
-    numGainElements: 592
-    vbreakdown: 6.6
-    temperature: -70.
+!YAMLCamera
+X-7291: !YAMLDict
+  ADOffset: 0
+  numGainElements: 592
+  quantum_efficiency: 0.87
+  serial_number: X-7291
+  specs: 
+    !YAMLCameraSpec
+    EM Gain On: !YAMLDict
+      10MHz: !YAMLDict
+        3: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 4.58, readoutNoise: 63.16} # TrueEMGain not measured
+      17MHz: !YAMLDict
+        1: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 14.39, readoutNoise: 271.81} # TrueEMGain not measured
+        3: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 4.82, readoutNoise: 85.38} # TrueEMGain not measured
+  temperature: -70.0
+  vbreakdown: 6.6
+---
+!YAMLCamera
+X-9309: !YAMLDict
+  ADOffset: 400
+  numGainElements: 592
+  quantum_efficiency: 0.87
+  serial_number: X-9309
+  specs: 
+    !YAMLCameraSpec
+    EM Gain On: !YAMLDict
+      10MHz: !YAMLDict
+        1: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 4.58, readoutNoise: 63.16} # TrueEMGain not measured
+      30MHz: !YAMLDict
+        1: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 17.0, readoutNoise: 244.} # TrueEMGain not measured
+        2: !YAMLDict {TrueEMGain: 31.58, electronsPerCount: 5.03, readoutNoise: 136.} # measured at Leica's microscope controller's GUI's EMGain = 300
+  temperature: -70.0
+  vbreakdown: 6.6
+---

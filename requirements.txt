@@ -1,11 +1,11 @@
 [required]
-python>=3.6
 numpy
 scipy
 torch>=0.4
 h5py
 addict
-fiji_tools
+fijitools
+ruamel.yaml
 
 [java]
 javabridge

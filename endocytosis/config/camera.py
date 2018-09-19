@@ -18,67 +18,101 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import numpy as np
-from addict import Dict
 from ruamel import yaml
-from copy import copy
+
+from ..helpers.data_structures import YAMLDict
 
 
-def addict_representer(dumper, data):
-    def as_typical_dict(addict_dict):
-        """
-        Returns an addict.Dict as a dict.
-        """
-        if isinstance(addict_dict, Dict):
-            d = {}
-            for k, v in addict_dict.items():
-                d[k] = as_typical_dict(v)
-            return d
-        else:
-            return addict_dict
+class YAMLCameraSpec(YAMLDict):
+    yaml_tag = '!YAMLCameraSpec'
 
-    data = as_typical_dict(data)
-    return dumper.represent_dict(data)
-
-
-class CameraSetting(yaml.YAMLObject):
-    yaml_tag = '!CameraSetting'
-
-    def __init__(self, serial_number, ADOffset, quantum_efficiency,
-                 temperature, specs):
+    def __init__(self):
         super().__init__()
-        self.serial_number = str(serial_number)
-        self.ADOffset = ADOffset
-        self.quantum_efficiency = quantum_efficiency
-        self.temperature = temperature
-        self.specs = specs
-        self.vbreakdown = 6.6
 
-    def add_specs(self, specs, EM='EM Gain On', readout_rate='17MHz',
-                  preamp_setting=1):
-        EM, readout_rate, preamp_setting = map(str, (EM, readout_rate,
-                                                     preamp_setting))
-        self.specs[EM][readout_rate][preamp_setting] = specs
+    def __missing__(self, name):
+        return YAMLDict(__parent=self, __key=name)
 
-    def __repr__(self):
-        d = Dict()
-        d.serial_number = self.serial_number
-        d.ADOffset = self.ADOffset
-        d.quantum_efficiency = self.quantum_efficiency
-        d.temperature = self.temperature
-        d.vbreakdown = self.vbreakdown
-        d.specs = self.specs
-        return d.__repr__()
+    def add_specs(self, electronsPerCount, readoutNoise, TrueEMGain,
+                  EM='EM Gain On', readout_rate='17MHz', preamp_setting=1):
+        pas = YAMLDict({'electronsPerCount': electronsPerCount,
+                        'readoutNoise': readoutNoise,
+                        'TrueEMGain': TrueEMGain})
+        args = EM, readout_rate, preamp_setting
+        args = tuple(map(str, args))
+        self[EM][readout_rate][preamp_setting] = pas
+
+    @classmethod
+    def load(cls, constructor, node):
+        constructor.flatten_mapping(node)
+        d = constructor.construct_mapping(node, deep=True)
+        ret = cls()
+        for em in d.keys():
+            for rr in d[em].keys():
+                for pas, val in d[em][rr].items():
+                    ret.add_specs(val['electronsPerCount'],
+                                  val['readoutNoise'],
+                                  val['TrueEMGain'],
+                                  em, rr, pas)
+        return ret
 
 
-def load_camera(path):
-    ret = None
+class YAMLCamera(YAMLDict):
+    yaml_tag = '!YAMLCamera'
+
+    def __init__(self, serial_number, ADOffset, quantum_efficiency=0.87,
+                 temperature=-70., numGainElements=592, specs=None):
+        super().__init__()
+        yd = YAMLDict({'serial_number': serial_number,
+                       'ADOffset': ADOffset,
+                       'quantum_efficiency': quantum_efficiency,
+                       'temperature': temperature,
+                       'numGainElements': numGainElements,
+                       'vbreakdown': 6.6})
+        if specs:
+            yd['specs'] = specs
+        self[serial_number] = yd
+
+    def __missing__(self, name):
+        return YAMLDict(__parent=self, __key=name)
+
+    @classmethod
+    def load(cls, constructor, node):
+        # BUG: YAMLCameraSpec are saved as YAMLDict
+        constructor.flatten_mapping(node)
+        d = constructor.construct_mapping(node, deep=True)
+        serial_number = list(d.keys())[0]
+        keys = ['ADOffset', 'quantum_efficiency',
+                'temperature', 'numGainElements', 'specs']
+        d = d[serial_number]
+        kwargs = {k: d[k] for k in keys}
+        return cls(serial_number, **kwargs)
+
+    def add_specs(self, specs):
+        self[self.serial_number]['specs'] = specs
+
+
+def make_YAML(typ='safe'):
+    y = yaml.YAML(typ=typ)
+    for c in (YAMLCamera, YAMLCameraSpec, YAMLDict):
+        y.register_class(c)
+    return y
+
+
+def load_camera_yaml(path, serial_number):
+    """
+    Load EMCCD camera metadata from a YAML file.
+    """
+    y = make_YAML()
     with open(path, 'r') as f:
-        ret = yaml.load_all(f.read())
-    return ret
+        for item in y.load_all(f):
+            if serial_number in item:
+                return item[serial_number]
+
+    raise IOError("Serial number {} was not found.".format(serial_number))
 
 
-def write_camera(path, cameras):
-    dumper = yaml.Dumper()
+def dump_camera_yaml(path, cameras):
+    y = make_YAML()
+    cameras = [cameras]
     with open(path, 'w') as f:
-        
+        y.dump_all(cameras, f)

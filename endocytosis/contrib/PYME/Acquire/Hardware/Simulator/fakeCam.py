@@ -28,14 +28,14 @@ from endocytosis.contrib.PYME.Acquire.Hardware import EMCCDTheory
 
 class NoiseMaker(object):
     def __init__(self, QE=.8, electronsPerCount=27.32, readoutNoise=109.8,
-                 EMGain=0, background=0., ADOffset=967, shutterOpen=True,
+                 TrueEMGain=0, background=0., ADOffset=967, shutterOpen=True,
                  numGainElements=536, vbreakdown=6.6, temperature=-70.,
                  fast_read_approx=False, **kwargs):
 
         self.QE = QE
         self.ElectronsPerCount = electronsPerCount
         self.ReadoutNoise = readoutNoise
-        self.EMGain = EMGain
+        self.TrueEMGain = TrueEMGain
         self.background = background
         self.ADOffset = ADOffset
         self.NGainElements = numGainElements
@@ -79,7 +79,7 @@ class NoiseMaker(object):
     def noisify(self, im):
         """Add noise to image using an EMCCD noise model"""
 
-        M = EMCCDTheory.M((80. + self.EMGain)/(255 + 80.),
+        M = EMCCDTheory.M((80. + self.TrueEMGain)/(255 + 80.),
                           self.vbreakdown, self.temperature,
                           self.NGainElements, 2.2)
         F2 = 1.0/EMCCDTheory.FSquared(M, self.NGainElements)
@@ -98,7 +98,7 @@ class NoiseMaker(object):
         return o
 
     def getbg(self):
-        M = EMCCDTheory.M((80. + self.EMGain)/(255 + 80.), self.vbreakdown,
+        M = EMCCDTheory.M((80. + self.TrueEMGain)/(255 + 80.), self.vbreakdown,
                           self.temperature, self.NGainElements, 2.2)
         F2 = 1.0/EMCCDTheory.FSquared(M, self.NGainElements)
 

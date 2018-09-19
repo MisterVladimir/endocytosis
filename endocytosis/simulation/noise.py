@@ -18,24 +18,43 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import copy
 import numpy as np
-from abc import ABC, abstractmethod
 
-from endocytosis.contrib.PYME.Acquire.Hardware.Simulator import fakeCam
-from endocytosis.config import DEFAULT as cfg
+from ..contrib.PYME.Acquire.Hardware.Simulator import fakeCam
+from ..config.camera import load_camera_yaml
 
 
-class NoiseModel(fakeCam.NoiseModel):
+class NoiseModel(object):
     """
     Parameters
     -----------
+    path: str
+    Path to the (YAML) camera metadata file.
+
     camera_serial_number: str
-    Camera data should be set in 
+    Serial number of the camera whose metadata we'd like to use.
     """
-    def __init__(self, camera_serial_number):
-        kwargs = cfg.CAMERA[camera_serial_number]
-        super().__init__(**kwargs)
+    def __init__(self, path, camera_serial_number):
+        self.path = path
+        self.camera_serial_number = camera_serial_number
+        self._data = load_camera_yaml(path, camera_serial_number)
+
+    def load_camera_metadata(self, EMGainOn, readout_rate, preamp_setting):
+        spec = self._data['specs']
+        if EMGainOn:
+            gain = 'EM Gain On'
+        else:
+            gain = 'EM Gain Off'
+        readout_rate = str(int(readout_rate)) + 'MHz'
+        preamp_setting = str(preamp_setting)
+        spec = spec[gain][readout_rate][preamp_setting]
+        self.gain = spec['TrueEMGain']
+        self.read_noise = spec['readoutNoise']
+        self.electrons_per_count = spec['electronsPerCount']
 
     def render(self, im):
-        return self.noisify(im)
+        n_electrons = self.gain*2*np.random.poisson((im)/2)
+        return (n_electrons +
+                self.read_noise * np.random.standard_normal(n_electrons.shape)
+                )/self.electrons_per_count

@@ -39,7 +39,7 @@ def SNR(S, ReadNoise, M, N, B=0):
     return (S-B)/np.sqrt((ReadNoise/M)**2 + FSquared(M, N)*S)
 
 
-def M(V, Vbr, T, N, n=np.sqrt(2)):
+def M(V, Vbr, T, N, n=2.):
     """
     EM gain as a function of voltage (V), breakdown voltage, temperature (T),
     and number of gain stages (N). 2 < n < 6 is an emperical exponent.

@@ -19,12 +19,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from sys import platform, maxsize, version_info
-from os import environ
+import os
+import re
 from setuptools import setup, Extension
 from Cython.Build import cythonize
-from os import path
 from numpy import get_include
-
+import subprocess
+import ctypes
 
 with open('README.md', 'r') as f:
     README = f.read()
@@ -40,7 +41,7 @@ def check_java():
     is_mac = platform == 'darwin'
     is_win = platform.startswith("win")
 
-    if 'JAVA_HOME' in environ:
+    if 'JAVA_HOME' in os.environ:
         return True
     elif is_mac:
         # Use the "java_home" executable to find the location
@@ -137,7 +138,7 @@ def get_requirements(*args):
         return sum(req_dict.values(), [])
 
 
-def create_extension(path_as_list, sources, module_name):
+def create_extension(path_as_list, sources, module_name, cy=False):
     # def create_extension(name, sources):
     """
     """
@@ -150,29 +151,30 @@ def create_extension(path_as_list, sources, module_name):
     compile_args = ['-O3', '-fno-exceptions', '-ffast-math',
                     '-march=nocona', '-mtune=nocona']
 
-    parent_directory = path.sep.join(path_as_list) + path.sep
+    parent_directory = os.path.sep.join(path_as_list) + os.path.sep
     sources = [parent_directory + s for s in sources]
-    name = path.extsep.join(path_as_list + [module_name])
+    name = os.path.extsep.join(path_as_list + [module_name])
 
     ext = Extension(name, sources, include_dirs=[get_include()],
                     extra_compile_args=compile_args, extra_link_args=link_args)
+
+    if cy:
+        ext = cythonize(ext)[0]
 
     return ext
 
 if __name__ == '__main__':
     from setuptools import find_packages
-    kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'psfmodel'],
-               'sources': ['cygauss2d.c'],
-               'module_name': 'cygauss2d'
-               },
+    kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'obj'],
+               'sources': ['cygauss2d.pyx'],
+               'module_name': 'cygauss2d',
+               'cy': True},
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
                'sources': ['psf.c'],
-               'module_name': '_psf'
-               },
+               'module_name': '_psf'},
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
                'sources': ['tifffile.c'],
-               'module_name': '_tifffile'
-               }]
+               'module_name': '_tifffile'}]
     ext = [create_extension(**k) for k in kwargs]
     ver = '0.1'
     url = r'https://github.com/MisterVladimir/endocytosis'
@@ -193,5 +195,5 @@ if __name__ == '__main__':
           classifiers=[
               'Intended Audience :: Science/Research',
               'Topic :: Scientific/Engineering :: Medical Science Apps.',
-              'Topic :: Scientific/Engineering :: Image Recognition', 
+              'Topic :: Scientific/Engineering :: Image Recognition',
               'Programming Language :: Python :: 3.6'])
