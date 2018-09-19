@@ -138,7 +138,7 @@ def get_requirements(*args):
         return sum(req_dict.values(), [])
 
 
-def create_extension(path_as_list, sources, module_name, cy=False):
+def create_extension(path_as_list, sources, module_name):
     # def create_extension(name, sources):
     """
     """
@@ -158,17 +158,13 @@ def create_extension(path_as_list, sources, module_name, cy=False):
     ext = Extension(name, sources, include_dirs=[get_include()],
                     extra_compile_args=compile_args, extra_link_args=link_args)
 
-    if cy:
-        ext = cythonize(ext)[0]
-
     return ext
 
 if __name__ == '__main__':
     from setuptools import find_packages
     kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'obj'],
-               'sources': ['cygauss2d.pyx'],
-               'module_name': 'cygauss2d',
-               'cy': True},
+               'sources': ['cygauss2d.c'],
+               'module_name': 'cygauss2d'},
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
                'sources': ['psf.c'],
                'module_name': '_psf'},

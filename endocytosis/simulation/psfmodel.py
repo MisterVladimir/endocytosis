@@ -420,6 +420,12 @@ class Gaussian2D(AbstractPSFModel):
 
 
 class SimpleGaussian2DModel(object):
+    """
+    Parameters
+    -------------
+    x, y: float
+    coordinates relative to the rendered image's center.
+    """
     model_function = cygauss2d.model
 
     def __init__(self, A, sigma, x, y, mx, my, b):
@@ -429,9 +435,10 @@ class SimpleGaussian2DModel(object):
     def render(self, shape):
         dx, dy = shape
         X, Y = np.mgrid[:dx, :dy]
-        raveled_im = self.model_function(self.A, self.sigma, self.x, self.y,
-                                         self.mx, self.my, self.b, X, Y)
-        return raveled_im.reshape(X.shape, dtype=np.float32)
+        x = dx // 2. + self.x
+        y = dy // 2. + self.y
+        return self.model_function(self.A, self.sigma, x, y,
+                                   self.mx, self.my, self.b, X, Y)
 
 
 # not sure what to do with this for now
