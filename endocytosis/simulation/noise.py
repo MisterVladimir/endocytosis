@@ -42,6 +42,8 @@ class NoiseModel(object):
 
     def load_camera_metadata(self, EMGainOn, readout_rate, preamp_setting):
         spec = self._data['specs']
+        self.ADOffset = self._data['ADOffset']
+        assert self.ADOffset, "Metadata not imported correctly."
         if EMGainOn:
             gain = 'EM Gain On'
         else:
@@ -57,4 +59,4 @@ class NoiseModel(object):
         n_electrons = self.gain*2*np.random.poisson((im)/2)
         return (n_electrons +
                 self.read_noise * np.random.standard_normal(n_electrons.shape)
-                )/self.electrons_per_count
+                )/self.electrons_per_count + self.ADOffset

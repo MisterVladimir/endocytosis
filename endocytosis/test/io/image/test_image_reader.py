@@ -18,20 +18,29 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from abc import ABC, abstractmethod
+import unittest
+from endocytosis.test import run
 
 
-class IO(ABC):
-    """
-    Convenience abstract base class for all classes that do file reading and
-    writing.
-    """
-    def __enter__(self):
-        return self
+class ImageReaderTest(unittest.TestCase):
+    def test_read_ImageJ(self):
+        pass
 
-    def __exit__(self, typ, value, traceback):
-        self.cleanup()
+    def test_read_ImageJ_metadata(self):
+        pass
 
-    @abstractmethod
-    def cleanup(self):
-        raise NotImplementedError('Implement in child classes.')
+    def test_read_OME(self):
+        pass
+
+    def test_read_OME_metadata(self):
+        pass
+
+# add this to all test modules
+TESTS = [ImageReaderTest, ]
+
+
+def run_module_tests():
+    run(TESTS)
+
+if __name__ == '__main__':
+    run_module_tests()

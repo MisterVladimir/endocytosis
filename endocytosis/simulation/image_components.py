@@ -23,6 +23,7 @@ from abc import ABC, abstractmethod
 import h5py
 import weakref
 import os
+import numbers
 
 from fijitools.helpers.coordinate import Coordinate
 from fijitools.helpers.iteration import isiterable
@@ -30,19 +31,12 @@ from fijitools.helpers.iteration import isiterable
 from ..helpers.data_structures import TrackedSet
 
 
-class AbstractSimulatedItem(ABC):
-    @property
-    @abstractmethod
-    def pixelsize(self):
-        pass
-
-
-class FieldOfView(AbstractSimulatedItem):
+class FieldOfView(object):
     """
     shape: 2-tuple
     Shape of image array. Image must be 2D.
 
-    pixelsize: float
+    pixelsize: float or Coordinate
     Nanometers per pixel.
 
     psfmodel: psfmodel.SimpleGaussian2D or psfmodel.Gaussian2D
@@ -54,6 +48,7 @@ class FieldOfView(AbstractSimulatedItem):
         self._data = np.zeros(shape, dtype=np.float32)
         self.X, self.Y = np.mgrid[:shape[0], :shape[1]]
         self._max_X, self._max_Y = self.X[-1, -1], self.Y[-1, -1]
+
         self.pixelsize = pixelsize
         self.psf = psfmodel
         self.noise = noise_model
@@ -66,7 +61,20 @@ class FieldOfView(AbstractSimulatedItem):
 
     @pixelsize.setter
     def pixelsize(self, value):
-        self._pixelsize = value
+        if isinstance(value, numbers.Real):
+            self._pixelsize = Coordinate(nm=[value, value], px=(1., 1.))
+        elif isiterable(value) and np.array(value).ndim == 2:
+            self._pixelsize = Coordinate(nm=np.array(value), px=(1., 1.))
+        elif isinstance(value, Coordinate):
+            nm = value['nm'] / value['px']
+            if len(value) == 1:
+                self._pixelsize = Coordinate(nm=[nm, nm], px=[1., 1.])
+            elif len(value) == 2 and all(np.isin(['nm', 'px'],
+                                                 list(value.keys()))):
+                self._pixelsize = Coordinate(nm=nm, px=[1., 1.])
+        else:
+            raise TypeError('pixelsize must be a number, iterable or '
+                            'Coordinate.')
 
     def render(self):
         if self.dirty:
@@ -100,11 +108,11 @@ class FieldOfView(AbstractSimulatedItem):
             Shape of rendered item in pixels.
         """
         # pixel coordinate of object center
-        px = np.rint(coordinate['nm'] / self.pixelsize).astype(int)
+        px = np.rint(coordinate['px']).astype(int)
         # how to slice into self._data
         # sldata and slobj are: [[x0, y0], 
         #                        [x1, y1]]
-        sldata = px[None, ...] + np.array([-shape / 2, shape / 2], int)
+        sldata = px[None, ...] + np.array([-shape // 2, shape // 2], int)
         slobj = np.zeros((2, 2), int)
 
         slobj[0] = np.where(sldata[0] < 0, -sldata[0], 0)
@@ -155,17 +163,19 @@ class FieldOfView(AbstractSimulatedItem):
 
     def _render(self):
         self._render_children(self.children.removed, add=False)
-        self.children.removed = {}
+        self.children.removed = set()
 
         self._render_children(self.children.added, add=True)
-        self.children.added = {}
+        self.children.added = set()
 
-    def add_spot(self, coordinate, A, shape):
+    def add_spot(self, coordinate, A):
         # creates a child Spot instance
+        shape = self.psf.sigma['px'] * np.array([8, 8])
+        coordinate.pixelsize = self.pixelsize
         return Spot(coordinate, self.psf, A, shape, parent=self)
 
 
-class ImageComponent(AbstractSimulatedItem):
+class ImageComponent(ABC):
     """
     coordinate property is center of the object, where (0,0) is the parent
     object's coordinate.
@@ -187,14 +197,12 @@ class ImageComponent(AbstractSimulatedItem):
         self._coordinate = c
 
     def get_global_coordinate(self):
-        def get_parent_coordinate(child):
+        def get_coordinate(child):
             if hasattr(child, 'parent') and child.parent is not None:
-                return child.coordinate + get_parent_coordinate(child.parent)
+                return child.coordinate + get_coordinate(child.parent)
             else:
-                return Coordinate(nm=(0, 0))
-
-        val = get_parent_coordinate(self)
-        return val
+                return Coordinate(nm=[0, 0])
+        return get_coordinate(self)
 
     @property
     def pixelsize(self):

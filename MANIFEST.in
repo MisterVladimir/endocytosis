@@ -1,3 +1,4 @@
 include *.txt
 include *.rst
-include endocytosis/test/data/*.yaml
+include endocytosis/test/simulation/data/*
+include endocytosis/test/image/data/*

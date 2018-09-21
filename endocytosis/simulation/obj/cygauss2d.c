@@ -1529,10 +1529,13 @@ static int __Pyx_ValidateAndInit_memviewslice(
                 PyObject *original_obj);
 
 /* ObjectToMemviewSlice.proto */
-static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(PyObject *, int writable_flag);
+static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_float(PyObject *, int writable_flag);
 
 /* ObjectToMemviewSlice.proto */
 static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_int(PyObject *, int writable_flag);
+
+/* ObjectToMemviewSlice.proto */
+static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_dc_float(PyObject *, int writable_flag);
 
 /* CIntToPy.proto */
 static CYTHON_INLINE PyObject* __Pyx_PyInt_From_int(int value);
@@ -1626,7 +1629,7 @@ static void __pyx_memoryview_refcount_objects_in_slice(char *, Py_ssize_t *, Py_
 static void __pyx_memoryview_slice_assign_scalar(__Pyx_memviewslice *, int, size_t, void *, int); /*proto*/
 static void __pyx_memoryview__slice_assign_scalar(char *, Py_ssize_t *, Py_ssize_t *, int, size_t, void *); /*proto*/
 static PyObject *__pyx_unpickle_Enum__set_state(struct __pyx_MemviewEnum_obj *, PyObject *); /*proto*/
-static __Pyx_TypeInfo __Pyx_TypeInfo_double = { "double", NULL, sizeof(double), { 0 }, 0, 'R', 0, 0 };
+static __Pyx_TypeInfo __Pyx_TypeInfo_float = { "float", NULL, sizeof(float), { 0 }, 0, 'R', 0, 0 };
 static __Pyx_TypeInfo __Pyx_TypeInfo_int = { "int", NULL, sizeof(int), { 0 }, 0, IS_UNSIGNED(int) ? 'U' : 'I', IS_UNSIGNED(int), 0 };
 #define __Pyx_MODULE_NAME "endocytosis.endocytosis.simulation.obj.cygauss2d"
 extern int __pyx_module_is_main_endocytosis__endocytosis__simulation__obj__cygauss2d;
@@ -1685,7 +1688,6 @@ static const char __pyx_k_ret_c[] = "ret_c";
 static const char __pyx_k_shape[] = "shape";
 static const char __pyx_k_sigma[] = "sigma";
 static const char __pyx_k_start[] = "start";
-static const char __pyx_k_double[] = "double";
 static const char __pyx_k_encode[] = "encode";
 static const char __pyx_k_format[] = "format";
 static const char __pyx_k_import[] = "__import__";
@@ -1696,6 +1698,7 @@ static const char __pyx_k_ret_py[] = "ret_py";
 static const char __pyx_k_struct[] = "struct";
 static const char __pyx_k_unpack[] = "unpack";
 static const char __pyx_k_update[] = "update";
+static const char __pyx_k_float32[] = "float32";
 static const char __pyx_k_fortran[] = "fortran";
 static const char __pyx_k_memview[] = "memview";
 static const char __pyx_k_Ellipsis[] = "Ellipsis";
@@ -1791,7 +1794,6 @@ static PyObject *__pyx_kp_s_contiguous_and_indirect;
 static PyObject *__pyx_kp_s_cygauss2d_pyx;
 static PyObject *__pyx_n_s_data;
 static PyObject *__pyx_n_s_dict;
-static PyObject *__pyx_n_s_double;
 static PyObject *__pyx_n_s_dtype;
 static PyObject *__pyx_n_s_dtype_is_object;
 static PyObject *__pyx_n_s_encode;
@@ -1801,6 +1803,7 @@ static PyObject *__pyx_n_s_error;
 static PyObject *__pyx_n_s_exp;
 static PyObject *__pyx_n_s_flags;
 static PyObject *__pyx_n_s_float;
+static PyObject *__pyx_n_s_float32;
 static PyObject *__pyx_n_s_format;
 static PyObject *__pyx_n_s_fortran;
 static PyObject *__pyx_n_u_fortran;
@@ -1866,8 +1869,8 @@ static PyObject *__pyx_n_s_update;
 static PyObject *__pyx_n_s_x;
 static PyObject *__pyx_n_s_y;
 static PyObject *__pyx_n_s_zeros_like;
-static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_objective(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_A, double __pyx_v_sigma, double __pyx_v_x, double __pyx_v_y, CYTHON_UNUSED double __pyx_v_mx, CYTHON_UNUSED double __pyx_v_my, CYTHON_UNUSED double __pyx_v_b, __Pyx_memviewslice __pyx_v_data, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y); /* proto */
-static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_2model(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_A, double __pyx_v_sigma, double __pyx_v_x, double __pyx_v_y, CYTHON_UNUSED double __pyx_v_mx, CYTHON_UNUSED double __pyx_v_my, CYTHON_UNUSED double __pyx_v_b, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y); /* proto */
+static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_objective(CYTHON_UNUSED PyObject *__pyx_self, float __pyx_v_A, float __pyx_v_sigma, float __pyx_v_x, float __pyx_v_y, CYTHON_UNUSED float __pyx_v_mx, CYTHON_UNUSED float __pyx_v_my, CYTHON_UNUSED float __pyx_v_b, __Pyx_memviewslice __pyx_v_data, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y); /* proto */
+static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_2model(CYTHON_UNUSED PyObject *__pyx_self, float __pyx_v_A, __Pyx_memviewslice __pyx_v_sigma, float __pyx_v_x, float __pyx_v_y, CYTHON_UNUSED float __pyx_v_mx, CYTHON_UNUSED float __pyx_v_my, CYTHON_UNUSED float __pyx_v_b, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array___cinit__(struct __pyx_array_obj *__pyx_v_self, PyObject *__pyx_v_shape, Py_ssize_t __pyx_v_itemsize, PyObject *__pyx_v_format, PyObject *__pyx_v_mode, int __pyx_v_allocate_buffer); /* proto */
 static int __pyx_array___pyx_pf_15View_dot_MemoryView_5array_2__getbuffer__(struct __pyx_array_obj *__pyx_v_self, Py_buffer *__pyx_v_info, int __pyx_v_flags); /* proto */
 static void __pyx_array___pyx_pf_15View_dot_MemoryView_5array_4__dealloc__(struct __pyx_array_obj *__pyx_v_self); /* proto */
@@ -1956,22 +1959,22 @@ static PyObject *__pyx_codeobj__32;
 /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":26
  * 
  * 
- * def objective(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *                      double mx, double my, double b,
- *                      double [:,::1] data,
+ * def objective(float A, float sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *               float mx, float my, float b,
+ *               float [:,::1] data,
  */
 
 /* Python wrapper */
 static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_1objective(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
 static PyMethodDef __pyx_mdef_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_1objective = {"objective", (PyCFunction)__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_1objective, METH_VARARGS|METH_KEYWORDS, 0};
 static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_1objective(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
-  double __pyx_v_A;
-  double __pyx_v_sigma;
-  double __pyx_v_x;
-  double __pyx_v_y;
-  CYTHON_UNUSED double __pyx_v_mx;
-  CYTHON_UNUSED double __pyx_v_my;
-  CYTHON_UNUSED double __pyx_v_b;
+  float __pyx_v_A;
+  float __pyx_v_sigma;
+  float __pyx_v_x;
+  float __pyx_v_y;
+  CYTHON_UNUSED float __pyx_v_mx;
+  CYTHON_UNUSED float __pyx_v_my;
+  CYTHON_UNUSED float __pyx_v_b;
   __Pyx_memviewslice __pyx_v_data = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_X = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_Y = { 0, 0, { 0 }, { 0 }, { 0 } };
@@ -2085,16 +2088,16 @@ static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
       values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
       values[9] = PyTuple_GET_ITEM(__pyx_args, 9);
     }
-    __pyx_v_A = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_A == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
-    __pyx_v_sigma = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_sigma == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
-    __pyx_v_x = __pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
-    __pyx_v_y = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
-    __pyx_v_mx = __pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_mx == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
-    __pyx_v_my = __pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_my == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
-    __pyx_v_b = __pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_b == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
-    __pyx_v_data = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(values[7], PyBUF_WRITABLE); if (unlikely(!__pyx_v_data.memview)) __PYX_ERR(0, 28, __pyx_L3_error)
-    __pyx_v_X = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(values[8], PyBUF_WRITABLE); if (unlikely(!__pyx_v_X.memview)) __PYX_ERR(0, 29, __pyx_L3_error)
-    __pyx_v_Y = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(values[9], PyBUF_WRITABLE); if (unlikely(!__pyx_v_Y.memview)) __PYX_ERR(0, 29, __pyx_L3_error)
+    __pyx_v_A = __pyx_PyFloat_AsFloat(values[0]); if (unlikely((__pyx_v_A == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
+    __pyx_v_sigma = __pyx_PyFloat_AsFloat(values[1]); if (unlikely((__pyx_v_sigma == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
+    __pyx_v_x = __pyx_PyFloat_AsFloat(values[2]); if (unlikely((__pyx_v_x == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
+    __pyx_v_y = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_y == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 26, __pyx_L3_error)
+    __pyx_v_mx = __pyx_PyFloat_AsFloat(values[4]); if (unlikely((__pyx_v_mx == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
+    __pyx_v_my = __pyx_PyFloat_AsFloat(values[5]); if (unlikely((__pyx_v_my == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
+    __pyx_v_b = __pyx_PyFloat_AsFloat(values[6]); if (unlikely((__pyx_v_b == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 27, __pyx_L3_error)
+    __pyx_v_data = __Pyx_PyObject_to_MemoryviewSlice_d_dc_float(values[7], PyBUF_WRITABLE); if (unlikely(!__pyx_v_data.memview)) __PYX_ERR(0, 28, __pyx_L3_error)
+    __pyx_v_X = __Pyx_PyObject_to_MemoryviewSlice_d_dc_int(values[8], PyBUF_WRITABLE); if (unlikely(!__pyx_v_X.memview)) __PYX_ERR(0, 29, __pyx_L3_error)
+    __pyx_v_Y = __Pyx_PyObject_to_MemoryviewSlice_d_dc_int(values[9], PyBUF_WRITABLE); if (unlikely(!__pyx_v_Y.memview)) __PYX_ERR(0, 29, __pyx_L3_error)
   }
   goto __pyx_L4_argument_unpacking_done;
   __pyx_L5_argtuple_error:;
@@ -2111,7 +2114,7 @@ static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_objective(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_A, double __pyx_v_sigma, double __pyx_v_x, double __pyx_v_y, CYTHON_UNUSED double __pyx_v_mx, CYTHON_UNUSED double __pyx_v_my, CYTHON_UNUSED double __pyx_v_b, __Pyx_memviewslice __pyx_v_data, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y) {
+static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_objective(CYTHON_UNUSED PyObject *__pyx_self, float __pyx_v_A, float __pyx_v_sigma, float __pyx_v_x, float __pyx_v_y, CYTHON_UNUSED float __pyx_v_mx, CYTHON_UNUSED float __pyx_v_my, CYTHON_UNUSED float __pyx_v_b, __Pyx_memviewslice __pyx_v_data, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y) {
   Py_ssize_t __pyx_v_imax;
   Py_ssize_t __pyx_v_jmax;
   double __pyx_v_ret;
@@ -2138,13 +2141,14 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
   Py_ssize_t __pyx_t_17;
   Py_ssize_t __pyx_t_18;
   Py_ssize_t __pyx_t_19;
-  double __pyx_t_20;
+  float __pyx_t_20;
   PyObject *__pyx_t_21 = NULL;
   PyObject *__pyx_t_22 = NULL;
+  double __pyx_t_23;
   __Pyx_RefNannySetupContext("objective", 0);
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":31
- *                      double [:,::1] X, double [:,::1] Y):
+ *               int [:,::1] X, int [:,::1] Y):
  * 
  *     cdef Py_ssize_t imax = data.shape[0]             # <<<<<<<<<<<<<<
  *     cdef Py_ssize_t jmax = data.shape[1]
@@ -2177,7 +2181,7 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
  * 
  *     for i in range(imax):
  */
-  __pyx_v_sigma = (2.0 * pow(__pyx_v_sigma, 2.0));
+  __pyx_v_sigma = (2.0 * powf(__pyx_v_sigma, 2.0));
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":36
  *     sigma = 2*sigma**2
@@ -2227,7 +2231,7 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
         __Pyx_RaiseBufferIndexError(__pyx_t_10);
         __PYX_ERR(0, 38, __pyx_L1_error)
       }
-      __pyx_t_11 = PyFloat_FromDouble((*((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_data.data + __pyx_t_8 * __pyx_v_data.strides[0]) )) + __pyx_t_9)) )))); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 38, __pyx_L1_error)
+      __pyx_t_11 = PyFloat_FromDouble((*((float *) ( /* dim=1 */ ((char *) (((float *) ( /* dim=0 */ (__pyx_v_data.data + __pyx_t_8 * __pyx_v_data.strides[0]) )) + __pyx_t_9)) )))); if (unlikely(!__pyx_t_11)) __PYX_ERR(0, 38, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_11);
       __pyx_t_12 = PyFloat_FromDouble(__pyx_v_A); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 38, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_12);
@@ -2274,7 +2278,7 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
         __Pyx_RaiseBufferIndexError(__pyx_t_10);
         __PYX_ERR(0, 39, __pyx_L1_error)
       }
-      __pyx_t_20 = (-(pow(((*((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_X.data + __pyx_t_16 * __pyx_v_X.strides[0]) )) + __pyx_t_17)) ))) - __pyx_v_x), 2.0) + pow(((*((double *) ( /* dim=1 */ ((char *) (((double *) ( /* dim=0 */ (__pyx_v_Y.data + __pyx_t_18 * __pyx_v_Y.strides[0]) )) + __pyx_t_19)) ))) - __pyx_v_y), 2.0)));
+      __pyx_t_20 = (-(powf(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_X.data + __pyx_t_16 * __pyx_v_X.strides[0]) )) + __pyx_t_17)) ))) - __pyx_v_x), 2.0) + powf(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_Y.data + __pyx_t_18 * __pyx_v_Y.strides[0]) )) + __pyx_t_19)) ))) - __pyx_v_y), 2.0)));
       if (unlikely(__pyx_v_sigma == 0)) {
         PyErr_SetString(PyExc_ZeroDivisionError, "float division");
         __PYX_ERR(0, 39, __pyx_L1_error)
@@ -2366,9 +2370,9 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
       __Pyx_GOTREF(__pyx_t_13);
       __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
       __Pyx_DECREF(__pyx_t_15); __pyx_t_15 = 0;
-      __pyx_t_20 = __pyx_PyFloat_AsDouble(__pyx_t_13); if (unlikely((__pyx_t_20 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 38, __pyx_L1_error)
+      __pyx_t_23 = __pyx_PyFloat_AsDouble(__pyx_t_13); if (unlikely((__pyx_t_23 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 38, __pyx_L1_error)
       __Pyx_DECREF(__pyx_t_13); __pyx_t_13 = 0;
-      __pyx_v_ret = __pyx_t_20;
+      __pyx_v_ret = __pyx_t_23;
     }
   }
 
@@ -2377,7 +2381,7 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
  *                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma))**2
  *     return numpy.float(ret)             # <<<<<<<<<<<<<<
  * 
- * def model(double A, double sigma, double x, double y,
+ * def model(float A, float [::1] sigma, float x, float y,
  */
   __Pyx_XDECREF(__pyx_r);
   __pyx_t_15 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_15)) __PYX_ERR(0, 40, __pyx_L1_error)
@@ -2440,9 +2444,9 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":26
  * 
  * 
- * def objective(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *                      double mx, double my, double b,
- *                      double [:,::1] data,
+ * def objective(float A, float sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *               float mx, float my, float b,
+ *               float [:,::1] data,
  */
 
   /* function exit code */
@@ -2469,8 +2473,8 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
 /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":42
  *     return numpy.float(ret)
  * 
- * def model(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+ * def model(float A, float [::1] sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
  * 
  */
 
@@ -2478,13 +2482,13 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
 static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_3model(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds); /*proto*/
 static PyMethodDef __pyx_mdef_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_3model = {"model", (PyCFunction)__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_3model, METH_VARARGS|METH_KEYWORDS, 0};
 static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_3model(PyObject *__pyx_self, PyObject *__pyx_args, PyObject *__pyx_kwds) {
-  double __pyx_v_A;
-  double __pyx_v_sigma;
-  double __pyx_v_x;
-  double __pyx_v_y;
-  CYTHON_UNUSED double __pyx_v_mx;
-  CYTHON_UNUSED double __pyx_v_my;
-  CYTHON_UNUSED double __pyx_v_b;
+  float __pyx_v_A;
+  __Pyx_memviewslice __pyx_v_sigma = { 0, 0, { 0 }, { 0 }, { 0 } };
+  float __pyx_v_x;
+  float __pyx_v_y;
+  CYTHON_UNUSED float __pyx_v_mx;
+  CYTHON_UNUSED float __pyx_v_my;
+  CYTHON_UNUSED float __pyx_v_b;
   __Pyx_memviewslice __pyx_v_X = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_memviewslice __pyx_v_Y = { 0, 0, { 0 }, { 0 }, { 0 } };
   PyObject *__pyx_r = 0;
@@ -2588,13 +2592,13 @@ static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
       values[7] = PyTuple_GET_ITEM(__pyx_args, 7);
       values[8] = PyTuple_GET_ITEM(__pyx_args, 8);
     }
-    __pyx_v_A = __pyx_PyFloat_AsDouble(values[0]); if (unlikely((__pyx_v_A == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
-    __pyx_v_sigma = __pyx_PyFloat_AsDouble(values[1]); if (unlikely((__pyx_v_sigma == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
-    __pyx_v_x = __pyx_PyFloat_AsDouble(values[2]); if (unlikely((__pyx_v_x == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
-    __pyx_v_y = __pyx_PyFloat_AsDouble(values[3]); if (unlikely((__pyx_v_y == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
-    __pyx_v_mx = __pyx_PyFloat_AsDouble(values[4]); if (unlikely((__pyx_v_mx == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
-    __pyx_v_my = __pyx_PyFloat_AsDouble(values[5]); if (unlikely((__pyx_v_my == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
-    __pyx_v_b = __pyx_PyFloat_AsDouble(values[6]); if (unlikely((__pyx_v_b == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
+    __pyx_v_A = __pyx_PyFloat_AsFloat(values[0]); if (unlikely((__pyx_v_A == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
+    __pyx_v_sigma = __Pyx_PyObject_to_MemoryviewSlice_dc_float(values[1], PyBUF_WRITABLE); if (unlikely(!__pyx_v_sigma.memview)) __PYX_ERR(0, 42, __pyx_L3_error)
+    __pyx_v_x = __pyx_PyFloat_AsFloat(values[2]); if (unlikely((__pyx_v_x == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
+    __pyx_v_y = __pyx_PyFloat_AsFloat(values[3]); if (unlikely((__pyx_v_y == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 42, __pyx_L3_error)
+    __pyx_v_mx = __pyx_PyFloat_AsFloat(values[4]); if (unlikely((__pyx_v_mx == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
+    __pyx_v_my = __pyx_PyFloat_AsFloat(values[5]); if (unlikely((__pyx_v_my == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
+    __pyx_v_b = __pyx_PyFloat_AsFloat(values[6]); if (unlikely((__pyx_v_b == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 43, __pyx_L3_error)
     __pyx_v_X = __Pyx_PyObject_to_MemoryviewSlice_d_dc_int(values[7], PyBUF_WRITABLE); if (unlikely(!__pyx_v_X.memview)) __PYX_ERR(0, 43, __pyx_L3_error)
     __pyx_v_Y = __Pyx_PyObject_to_MemoryviewSlice_d_dc_int(values[8], PyBUF_WRITABLE); if (unlikely(!__pyx_v_Y.memview)) __PYX_ERR(0, 43, __pyx_L3_error)
   }
@@ -2613,7 +2617,7 @@ static PyObject *__pyx_pw_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
   return __pyx_r;
 }
 
-static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_2model(CYTHON_UNUSED PyObject *__pyx_self, double __pyx_v_A, double __pyx_v_sigma, double __pyx_v_x, double __pyx_v_y, CYTHON_UNUSED double __pyx_v_mx, CYTHON_UNUSED double __pyx_v_my, CYTHON_UNUSED double __pyx_v_b, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y) {
+static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_2model(CYTHON_UNUSED PyObject *__pyx_self, float __pyx_v_A, __Pyx_memviewslice __pyx_v_sigma, float __pyx_v_x, float __pyx_v_y, CYTHON_UNUSED float __pyx_v_mx, CYTHON_UNUSED float __pyx_v_my, CYTHON_UNUSED float __pyx_v_b, __Pyx_memviewslice __pyx_v_X, __Pyx_memviewslice __pyx_v_Y) {
   Py_ssize_t __pyx_v_imax;
   Py_ssize_t __pyx_v_jmax;
   PyObject *__pyx_v_ret_py = NULL;
@@ -2622,34 +2626,43 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
   Py_ssize_t __pyx_v_j;
   PyObject *__pyx_r = NULL;
   __Pyx_RefNannyDeclarations
-  PyObject *__pyx_t_1 = NULL;
-  PyObject *__pyx_t_2 = NULL;
-  PyObject *__pyx_t_3 = NULL;
-  PyObject *__pyx_t_4 = NULL;
-  PyObject *__pyx_t_5 = NULL;
-  __Pyx_memviewslice __pyx_t_6 = { 0, 0, { 0 }, { 0 }, { 0 } };
-  Py_ssize_t __pyx_t_7;
-  Py_ssize_t __pyx_t_8;
-  Py_ssize_t __pyx_t_9;
-  Py_ssize_t __pyx_t_10;
-  Py_ssize_t __pyx_t_11;
+  Py_ssize_t __pyx_t_1;
+  int __pyx_t_2;
+  Py_ssize_t __pyx_t_3;
+  Py_ssize_t __pyx_t_4;
+  Py_ssize_t __pyx_t_5;
+  PyObject *__pyx_t_6 = NULL;
+  PyObject *__pyx_t_7 = NULL;
+  PyObject *__pyx_t_8 = NULL;
+  PyObject *__pyx_t_9 = NULL;
+  PyObject *__pyx_t_10 = NULL;
+  __Pyx_memviewslice __pyx_t_11 = { 0, 0, { 0 }, { 0 }, { 0 } };
   Py_ssize_t __pyx_t_12;
   Py_ssize_t __pyx_t_13;
   Py_ssize_t __pyx_t_14;
-  int __pyx_t_15;
+  Py_ssize_t __pyx_t_15;
   Py_ssize_t __pyx_t_16;
   Py_ssize_t __pyx_t_17;
-  double __pyx_t_18;
-  PyObject *__pyx_t_19 = NULL;
-  __Pyx_memviewslice __pyx_t_20 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_18;
+  Py_ssize_t __pyx_t_19;
+  float __pyx_t_20;
+  Py_ssize_t __pyx_t_21;
+  float __pyx_t_22;
+  Py_ssize_t __pyx_t_23;
+  Py_ssize_t __pyx_t_24;
+  float __pyx_t_25;
+  Py_ssize_t __pyx_t_26;
+  float __pyx_t_27;
+  PyObject *__pyx_t_28 = NULL;
+  __Pyx_memviewslice __pyx_t_29 = { 0, 0, { 0 }, { 0 }, { 0 } };
   __Pyx_RefNannySetupContext("model", 0);
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":45
- *           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+ *           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
  * 
  *     cdef Py_ssize_t imax = X.shape[0]             # <<<<<<<<<<<<<<
  *     cdef Py_ssize_t jmax = X.shape[1]
- *     sigma = 2*sigma**2
+ *     sigma[0] = 2*sigma[0]**2
  */
   __pyx_v_imax = (__pyx_v_X.shape[0]);
 
@@ -2657,214 +2670,306 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
  * 
  *     cdef Py_ssize_t imax = X.shape[0]
  *     cdef Py_ssize_t jmax = X.shape[1]             # <<<<<<<<<<<<<<
- *     sigma = 2*sigma**2
- *     ret_py = numpy.zeros_like(X, dtype=numpy.double)
+ *     sigma[0] = 2*sigma[0]**2
+ *     sigma[1] = 2*sigma[1]**2
  */
   __pyx_v_jmax = (__pyx_v_X.shape[1]);
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":47
  *     cdef Py_ssize_t imax = X.shape[0]
  *     cdef Py_ssize_t jmax = X.shape[1]
- *     sigma = 2*sigma**2             # <<<<<<<<<<<<<<
- *     ret_py = numpy.zeros_like(X, dtype=numpy.double)
- *     cdef double [:,::1] ret_c = ret_py
+ *     sigma[0] = 2*sigma[0]**2             # <<<<<<<<<<<<<<
+ *     sigma[1] = 2*sigma[1]**2
+ *     ret_py = numpy.zeros_like(X, dtype=numpy.float32)
  */
-  __pyx_v_sigma = (2.0 * pow(__pyx_v_sigma, 2.0));
+  __pyx_t_1 = 0;
+  __pyx_t_2 = -1;
+  if (__pyx_t_1 < 0) {
+    __pyx_t_1 += __pyx_v_sigma.shape[0];
+    if (unlikely(__pyx_t_1 < 0)) __pyx_t_2 = 0;
+  } else if (unlikely(__pyx_t_1 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+  if (unlikely(__pyx_t_2 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_2);
+    __PYX_ERR(0, 47, __pyx_L1_error)
+  }
+  __pyx_t_3 = 0;
+  __pyx_t_2 = -1;
+  if (__pyx_t_3 < 0) {
+    __pyx_t_3 += __pyx_v_sigma.shape[0];
+    if (unlikely(__pyx_t_3 < 0)) __pyx_t_2 = 0;
+  } else if (unlikely(__pyx_t_3 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+  if (unlikely(__pyx_t_2 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_2);
+    __PYX_ERR(0, 47, __pyx_L1_error)
+  }
+  *((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_3)) )) = (2.0 * powf((*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_1)) ))), 2.0));
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":48
  *     cdef Py_ssize_t jmax = X.shape[1]
- *     sigma = 2*sigma**2
- *     ret_py = numpy.zeros_like(X, dtype=numpy.double)             # <<<<<<<<<<<<<<
- *     cdef double [:,::1] ret_c = ret_py
- * 
+ *     sigma[0] = 2*sigma[0]**2
+ *     sigma[1] = 2*sigma[1]**2             # <<<<<<<<<<<<<<
+ *     ret_py = numpy.zeros_like(X, dtype=numpy.float32)
+ *     cdef float [:,::1] ret_c = ret_py
  */
-  __pyx_t_1 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_1, __pyx_n_s_zeros_like); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_2);
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_1 = __pyx_memoryview_fromslice(__pyx_v_X, 2, (PyObject *(*)(char *)) __pyx_memview_get_int, (int (*)(char *, PyObject *)) __pyx_memview_set_int, 0);; if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_3 = PyTuple_New(1); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_3);
-  __Pyx_GIVEREF(__pyx_t_1);
-  PyTuple_SET_ITEM(__pyx_t_3, 0, __pyx_t_1);
-  __pyx_t_1 = 0;
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_t_4, __pyx_n_s_double); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_DECREF(__pyx_t_4); __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_dtype, __pyx_t_5) < 0) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_3, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 48, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-  __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-  __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_v_ret_py = __pyx_t_5;
-  __pyx_t_5 = 0;
+  __pyx_t_4 = 1;
+  __pyx_t_2 = -1;
+  if (__pyx_t_4 < 0) {
+    __pyx_t_4 += __pyx_v_sigma.shape[0];
+    if (unlikely(__pyx_t_4 < 0)) __pyx_t_2 = 0;
+  } else if (unlikely(__pyx_t_4 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+  if (unlikely(__pyx_t_2 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_2);
+    __PYX_ERR(0, 48, __pyx_L1_error)
+  }
+  __pyx_t_5 = 1;
+  __pyx_t_2 = -1;
+  if (__pyx_t_5 < 0) {
+    __pyx_t_5 += __pyx_v_sigma.shape[0];
+    if (unlikely(__pyx_t_5 < 0)) __pyx_t_2 = 0;
+  } else if (unlikely(__pyx_t_5 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+  if (unlikely(__pyx_t_2 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_2);
+    __PYX_ERR(0, 48, __pyx_L1_error)
+  }
+  *((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_5)) )) = (2.0 * powf((*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_4)) ))), 2.0));
 
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":49
- *     sigma = 2*sigma**2
- *     ret_py = numpy.zeros_like(X, dtype=numpy.double)
- *     cdef double [:,::1] ret_c = ret_py             # <<<<<<<<<<<<<<
+ *     sigma[0] = 2*sigma[0]**2
+ *     sigma[1] = 2*sigma[1]**2
+ *     ret_py = numpy.zeros_like(X, dtype=numpy.float32)             # <<<<<<<<<<<<<<
+ *     cdef float [:,::1] ret_c = ret_py
+ * 
+ */
+  __pyx_t_6 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_6, __pyx_n_s_zeros_like); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_7);
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_t_6 = __pyx_memoryview_fromslice(__pyx_v_X, 2, (PyObject *(*)(char *)) __pyx_memview_get_int, (int (*)(char *, PyObject *)) __pyx_memview_set_int, 0);; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_8 = PyTuple_New(1); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_8);
+  __Pyx_GIVEREF(__pyx_t_6);
+  PyTuple_SET_ITEM(__pyx_t_8, 0, __pyx_t_6);
+  __pyx_t_6 = 0;
+  __pyx_t_6 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __pyx_t_9 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_9)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_9);
+  __pyx_t_10 = __Pyx_PyObject_GetAttrStr(__pyx_t_9, __pyx_n_s_float32); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_10);
+  __Pyx_DECREF(__pyx_t_9); __pyx_t_9 = 0;
+  if (PyDict_SetItem(__pyx_t_6, __pyx_n_s_dtype, __pyx_t_10) < 0) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
+  __pyx_t_10 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_8, __pyx_t_6); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 49, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_10);
+  __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+  __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_v_ret_py = __pyx_t_10;
+  __pyx_t_10 = 0;
+
+  /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":50
+ *     sigma[1] = 2*sigma[1]**2
+ *     ret_py = numpy.zeros_like(X, dtype=numpy.float32)
+ *     cdef float [:,::1] ret_c = ret_py             # <<<<<<<<<<<<<<
  * 
  *     for i in range(imax):
  */
-  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(__pyx_v_ret_py, PyBUF_WRITABLE); if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 49, __pyx_L1_error)
-  __pyx_v_ret_c = __pyx_t_6;
-  __pyx_t_6.memview = NULL;
-  __pyx_t_6.data = NULL;
+  __pyx_t_11 = __Pyx_PyObject_to_MemoryviewSlice_d_dc_float(__pyx_v_ret_py, PyBUF_WRITABLE); if (unlikely(!__pyx_t_11.memview)) __PYX_ERR(0, 50, __pyx_L1_error)
+  __pyx_v_ret_c = __pyx_t_11;
+  __pyx_t_11.memview = NULL;
+  __pyx_t_11.data = NULL;
 
-  /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":51
- *     cdef double [:,::1] ret_c = ret_py
+  /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":52
+ *     cdef float [:,::1] ret_c = ret_py
  * 
  *     for i in range(imax):             # <<<<<<<<<<<<<<
  *         for j in range(jmax):
- *         # used to be ret_c [:,::1] = ... ?? not sure why
+ *             ret_c [i, j::1] = A*numpy.exp(
  */
-  __pyx_t_7 = __pyx_v_imax;
-  __pyx_t_8 = __pyx_t_7;
-  for (__pyx_t_9 = 0; __pyx_t_9 < __pyx_t_8; __pyx_t_9+=1) {
-    __pyx_v_i = __pyx_t_9;
+  __pyx_t_12 = __pyx_v_imax;
+  __pyx_t_13 = __pyx_t_12;
+  for (__pyx_t_14 = 0; __pyx_t_14 < __pyx_t_13; __pyx_t_14+=1) {
+    __pyx_v_i = __pyx_t_14;
 
-    /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":52
+    /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":53
  * 
  *     for i in range(imax):
  *         for j in range(jmax):             # <<<<<<<<<<<<<<
- *         # used to be ret_c [:,::1] = ... ?? not sure why
  *             ret_c [i, j::1] = A*numpy.exp(
+ *                 -((X[i, j] - x)**2/sigma[0] +
  */
-    __pyx_t_10 = __pyx_v_jmax;
-    __pyx_t_11 = __pyx_t_10;
-    for (__pyx_t_12 = 0; __pyx_t_12 < __pyx_t_11; __pyx_t_12+=1) {
-      __pyx_v_j = __pyx_t_12;
+    __pyx_t_15 = __pyx_v_jmax;
+    __pyx_t_16 = __pyx_t_15;
+    for (__pyx_t_17 = 0; __pyx_t_17 < __pyx_t_16; __pyx_t_17+=1) {
+      __pyx_v_j = __pyx_t_17;
 
       /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":54
+ *     for i in range(imax):
  *         for j in range(jmax):
- *         # used to be ret_c [:,::1] = ... ?? not sure why
  *             ret_c [i, j::1] = A*numpy.exp(             # <<<<<<<<<<<<<<
- *                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)
- * 
+ *                 -((X[i, j] - x)**2/sigma[0] +
+ *                   (Y[i, j] - y)**2/sigma[1]))
  */
-      __pyx_t_5 = PyFloat_FromDouble(__pyx_v_A); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 54, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_5);
-      __pyx_t_3 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 54, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_2 = __Pyx_PyObject_GetAttrStr(__pyx_t_3, __pyx_n_s_exp); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 54, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_2);
-      __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+      __pyx_t_10 = PyFloat_FromDouble(__pyx_v_A); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 54, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_10);
+      __pyx_t_8 = __Pyx_GetModuleGlobalName(__pyx_n_s_numpy); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 54, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_7 = __Pyx_PyObject_GetAttrStr(__pyx_t_8, __pyx_n_s_exp); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 54, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
 
       /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":55
- *         # used to be ret_c [:,::1] = ... ?? not sure why
+ *         for j in range(jmax):
  *             ret_c [i, j::1] = A*numpy.exp(
- *                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)             # <<<<<<<<<<<<<<
+ *                 -((X[i, j] - x)**2/sigma[0] +             # <<<<<<<<<<<<<<
+ *                   (Y[i, j] - y)**2/sigma[1]))
  * 
- *     return ret_py
  */
-      __pyx_t_13 = __pyx_v_i;
-      __pyx_t_14 = __pyx_v_j;
-      __pyx_t_15 = -1;
-      if (__pyx_t_13 < 0) {
-        __pyx_t_13 += __pyx_v_X.shape[0];
-        if (unlikely(__pyx_t_13 < 0)) __pyx_t_15 = 0;
-      } else if (unlikely(__pyx_t_13 >= __pyx_v_X.shape[0])) __pyx_t_15 = 0;
-      if (__pyx_t_14 < 0) {
-        __pyx_t_14 += __pyx_v_X.shape[1];
-        if (unlikely(__pyx_t_14 < 0)) __pyx_t_15 = 1;
-      } else if (unlikely(__pyx_t_14 >= __pyx_v_X.shape[1])) __pyx_t_15 = 1;
-      if (unlikely(__pyx_t_15 != -1)) {
-        __Pyx_RaiseBufferIndexError(__pyx_t_15);
+      __pyx_t_18 = __pyx_v_i;
+      __pyx_t_19 = __pyx_v_j;
+      __pyx_t_2 = -1;
+      if (__pyx_t_18 < 0) {
+        __pyx_t_18 += __pyx_v_X.shape[0];
+        if (unlikely(__pyx_t_18 < 0)) __pyx_t_2 = 0;
+      } else if (unlikely(__pyx_t_18 >= __pyx_v_X.shape[0])) __pyx_t_2 = 0;
+      if (__pyx_t_19 < 0) {
+        __pyx_t_19 += __pyx_v_X.shape[1];
+        if (unlikely(__pyx_t_19 < 0)) __pyx_t_2 = 1;
+      } else if (unlikely(__pyx_t_19 >= __pyx_v_X.shape[1])) __pyx_t_2 = 1;
+      if (unlikely(__pyx_t_2 != -1)) {
+        __Pyx_RaiseBufferIndexError(__pyx_t_2);
         __PYX_ERR(0, 55, __pyx_L1_error)
       }
-      __pyx_t_16 = __pyx_v_i;
-      __pyx_t_17 = __pyx_v_j;
-      __pyx_t_15 = -1;
-      if (__pyx_t_16 < 0) {
-        __pyx_t_16 += __pyx_v_Y.shape[0];
-        if (unlikely(__pyx_t_16 < 0)) __pyx_t_15 = 0;
-      } else if (unlikely(__pyx_t_16 >= __pyx_v_Y.shape[0])) __pyx_t_15 = 0;
-      if (__pyx_t_17 < 0) {
-        __pyx_t_17 += __pyx_v_Y.shape[1];
-        if (unlikely(__pyx_t_17 < 0)) __pyx_t_15 = 1;
-      } else if (unlikely(__pyx_t_17 >= __pyx_v_Y.shape[1])) __pyx_t_15 = 1;
-      if (unlikely(__pyx_t_15 != -1)) {
-        __Pyx_RaiseBufferIndexError(__pyx_t_15);
+      __pyx_t_20 = powf(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_X.data + __pyx_t_18 * __pyx_v_X.strides[0]) )) + __pyx_t_19)) ))) - __pyx_v_x), 2.0);
+      __pyx_t_21 = 0;
+      __pyx_t_2 = -1;
+      if (__pyx_t_21 < 0) {
+        __pyx_t_21 += __pyx_v_sigma.shape[0];
+        if (unlikely(__pyx_t_21 < 0)) __pyx_t_2 = 0;
+      } else if (unlikely(__pyx_t_21 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+      if (unlikely(__pyx_t_2 != -1)) {
+        __Pyx_RaiseBufferIndexError(__pyx_t_2);
         __PYX_ERR(0, 55, __pyx_L1_error)
       }
-      __pyx_t_18 = (-(pow(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_X.data + __pyx_t_13 * __pyx_v_X.strides[0]) )) + __pyx_t_14)) ))) - __pyx_v_x), 2.0) + pow(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_Y.data + __pyx_t_16 * __pyx_v_Y.strides[0]) )) + __pyx_t_17)) ))) - __pyx_v_y), 2.0)));
-      if (unlikely(__pyx_v_sigma == 0)) {
+      __pyx_t_22 = (*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_21)) )));
+      if (unlikely(__pyx_t_22 == 0)) {
         PyErr_SetString(PyExc_ZeroDivisionError, "float division");
         __PYX_ERR(0, 55, __pyx_L1_error)
       }
-      __pyx_t_3 = PyFloat_FromDouble((__pyx_t_18 / __pyx_v_sigma)); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 55, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_3);
-      __pyx_t_4 = NULL;
-      if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_2))) {
-        __pyx_t_4 = PyMethod_GET_SELF(__pyx_t_2);
-        if (likely(__pyx_t_4)) {
-          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_2);
-          __Pyx_INCREF(__pyx_t_4);
+
+      /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":56
+ *             ret_c [i, j::1] = A*numpy.exp(
+ *                 -((X[i, j] - x)**2/sigma[0] +
+ *                   (Y[i, j] - y)**2/sigma[1]))             # <<<<<<<<<<<<<<
+ * 
+ *     return ret_py
+ */
+      __pyx_t_23 = __pyx_v_i;
+      __pyx_t_24 = __pyx_v_j;
+      __pyx_t_2 = -1;
+      if (__pyx_t_23 < 0) {
+        __pyx_t_23 += __pyx_v_Y.shape[0];
+        if (unlikely(__pyx_t_23 < 0)) __pyx_t_2 = 0;
+      } else if (unlikely(__pyx_t_23 >= __pyx_v_Y.shape[0])) __pyx_t_2 = 0;
+      if (__pyx_t_24 < 0) {
+        __pyx_t_24 += __pyx_v_Y.shape[1];
+        if (unlikely(__pyx_t_24 < 0)) __pyx_t_2 = 1;
+      } else if (unlikely(__pyx_t_24 >= __pyx_v_Y.shape[1])) __pyx_t_2 = 1;
+      if (unlikely(__pyx_t_2 != -1)) {
+        __Pyx_RaiseBufferIndexError(__pyx_t_2);
+        __PYX_ERR(0, 56, __pyx_L1_error)
+      }
+      __pyx_t_25 = powf(((*((int *) ( /* dim=1 */ ((char *) (((int *) ( /* dim=0 */ (__pyx_v_Y.data + __pyx_t_23 * __pyx_v_Y.strides[0]) )) + __pyx_t_24)) ))) - __pyx_v_y), 2.0);
+      __pyx_t_26 = 1;
+      __pyx_t_2 = -1;
+      if (__pyx_t_26 < 0) {
+        __pyx_t_26 += __pyx_v_sigma.shape[0];
+        if (unlikely(__pyx_t_26 < 0)) __pyx_t_2 = 0;
+      } else if (unlikely(__pyx_t_26 >= __pyx_v_sigma.shape[0])) __pyx_t_2 = 0;
+      if (unlikely(__pyx_t_2 != -1)) {
+        __Pyx_RaiseBufferIndexError(__pyx_t_2);
+        __PYX_ERR(0, 56, __pyx_L1_error)
+      }
+      __pyx_t_27 = (*((float *) ( /* dim=0 */ ((char *) (((float *) __pyx_v_sigma.data) + __pyx_t_26)) )));
+      if (unlikely(__pyx_t_27 == 0)) {
+        PyErr_SetString(PyExc_ZeroDivisionError, "float division");
+        __PYX_ERR(0, 56, __pyx_L1_error)
+      }
+
+      /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":55
+ *         for j in range(jmax):
+ *             ret_c [i, j::1] = A*numpy.exp(
+ *                 -((X[i, j] - x)**2/sigma[0] +             # <<<<<<<<<<<<<<
+ *                   (Y[i, j] - y)**2/sigma[1]))
+ * 
+ */
+      __pyx_t_8 = PyFloat_FromDouble((-((__pyx_t_20 / __pyx_t_22) + (__pyx_t_25 / __pyx_t_27)))); if (unlikely(!__pyx_t_8)) __PYX_ERR(0, 55, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_8);
+      __pyx_t_9 = NULL;
+      if (CYTHON_UNPACK_METHODS && unlikely(PyMethod_Check(__pyx_t_7))) {
+        __pyx_t_9 = PyMethod_GET_SELF(__pyx_t_7);
+        if (likely(__pyx_t_9)) {
+          PyObject* function = PyMethod_GET_FUNCTION(__pyx_t_7);
+          __Pyx_INCREF(__pyx_t_9);
           __Pyx_INCREF(function);
-          __Pyx_DECREF_SET(__pyx_t_2, function);
+          __Pyx_DECREF_SET(__pyx_t_7, function);
         }
       }
-      if (!__pyx_t_4) {
-        __pyx_t_1 = __Pyx_PyObject_CallOneArg(__pyx_t_2, __pyx_t_3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
-        __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
-        __Pyx_GOTREF(__pyx_t_1);
+      if (!__pyx_t_9) {
+        __pyx_t_6 = __Pyx_PyObject_CallOneArg(__pyx_t_7, __pyx_t_8); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 54, __pyx_L1_error)
+        __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
+        __Pyx_GOTREF(__pyx_t_6);
       } else {
         #if CYTHON_FAST_PYCALL
-        if (PyFunction_Check(__pyx_t_2)) {
-          PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_3};
-          __pyx_t_1 = __Pyx_PyFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
-          __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-          __Pyx_GOTREF(__pyx_t_1);
-          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        if (PyFunction_Check(__pyx_t_7)) {
+          PyObject *__pyx_temp[2] = {__pyx_t_9, __pyx_t_8};
+          __pyx_t_6 = __Pyx_PyFunction_FastCall(__pyx_t_7, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 54, __pyx_L1_error)
+          __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+          __Pyx_GOTREF(__pyx_t_6);
+          __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         } else
         #endif
         #if CYTHON_FAST_PYCCALL
-        if (__Pyx_PyFastCFunction_Check(__pyx_t_2)) {
-          PyObject *__pyx_temp[2] = {__pyx_t_4, __pyx_t_3};
-          __pyx_t_1 = __Pyx_PyCFunction_FastCall(__pyx_t_2, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
-          __Pyx_XDECREF(__pyx_t_4); __pyx_t_4 = 0;
-          __Pyx_GOTREF(__pyx_t_1);
-          __Pyx_DECREF(__pyx_t_3); __pyx_t_3 = 0;
+        if (__Pyx_PyFastCFunction_Check(__pyx_t_7)) {
+          PyObject *__pyx_temp[2] = {__pyx_t_9, __pyx_t_8};
+          __pyx_t_6 = __Pyx_PyCFunction_FastCall(__pyx_t_7, __pyx_temp+1-1, 1+1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 54, __pyx_L1_error)
+          __Pyx_XDECREF(__pyx_t_9); __pyx_t_9 = 0;
+          __Pyx_GOTREF(__pyx_t_6);
+          __Pyx_DECREF(__pyx_t_8); __pyx_t_8 = 0;
         } else
         #endif
         {
-          __pyx_t_19 = PyTuple_New(1+1); if (unlikely(!__pyx_t_19)) __PYX_ERR(0, 54, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_19);
-          __Pyx_GIVEREF(__pyx_t_4); PyTuple_SET_ITEM(__pyx_t_19, 0, __pyx_t_4); __pyx_t_4 = NULL;
-          __Pyx_GIVEREF(__pyx_t_3);
-          PyTuple_SET_ITEM(__pyx_t_19, 0+1, __pyx_t_3);
-          __pyx_t_3 = 0;
-          __pyx_t_1 = __Pyx_PyObject_Call(__pyx_t_2, __pyx_t_19, NULL); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 54, __pyx_L1_error)
-          __Pyx_GOTREF(__pyx_t_1);
-          __Pyx_DECREF(__pyx_t_19); __pyx_t_19 = 0;
+          __pyx_t_28 = PyTuple_New(1+1); if (unlikely(!__pyx_t_28)) __PYX_ERR(0, 54, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_28);
+          __Pyx_GIVEREF(__pyx_t_9); PyTuple_SET_ITEM(__pyx_t_28, 0, __pyx_t_9); __pyx_t_9 = NULL;
+          __Pyx_GIVEREF(__pyx_t_8);
+          PyTuple_SET_ITEM(__pyx_t_28, 0+1, __pyx_t_8);
+          __pyx_t_8 = 0;
+          __pyx_t_6 = __Pyx_PyObject_Call(__pyx_t_7, __pyx_t_28, NULL); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 54, __pyx_L1_error)
+          __Pyx_GOTREF(__pyx_t_6);
+          __Pyx_DECREF(__pyx_t_28); __pyx_t_28 = 0;
         }
       }
-      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
 
       /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":54
+ *     for i in range(imax):
  *         for j in range(jmax):
- *         # used to be ret_c [:,::1] = ... ?? not sure why
  *             ret_c [i, j::1] = A*numpy.exp(             # <<<<<<<<<<<<<<
- *                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)
- * 
+ *                 -((X[i, j] - x)**2/sigma[0] +
+ *                   (Y[i, j] - y)**2/sigma[1]))
  */
-      __pyx_t_2 = PyNumber_Multiply(__pyx_t_5, __pyx_t_1); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 54, __pyx_L1_error)
-      __Pyx_GOTREF(__pyx_t_2);
-      __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-      __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-      __pyx_t_18 = __pyx_PyFloat_AsDouble(__pyx_t_2); if (unlikely((__pyx_t_18 == (double)-1) && PyErr_Occurred())) __PYX_ERR(0, 54, __pyx_L1_error)
-      __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
-      __pyx_t_20.data = __pyx_v_ret_c.data;
-      __pyx_t_20.memview = __pyx_v_ret_c.memview;
-      __PYX_INC_MEMVIEW(&__pyx_t_20, 0);
+      __pyx_t_7 = PyNumber_Multiply(__pyx_t_10, __pyx_t_6); if (unlikely(!__pyx_t_7)) __PYX_ERR(0, 54, __pyx_L1_error)
+      __Pyx_GOTREF(__pyx_t_7);
+      __Pyx_DECREF(__pyx_t_10); __pyx_t_10 = 0;
+      __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+      __pyx_t_27 = __pyx_PyFloat_AsFloat(__pyx_t_7); if (unlikely((__pyx_t_27 == (float)-1) && PyErr_Occurred())) __PYX_ERR(0, 54, __pyx_L1_error)
+      __Pyx_DECREF(__pyx_t_7); __pyx_t_7 = 0;
+      __pyx_t_29.data = __pyx_v_ret_c.data;
+      __pyx_t_29.memview = __pyx_v_ret_c.memview;
+      __PYX_INC_MEMVIEW(&__pyx_t_29, 0);
       {
     Py_ssize_t __pyx_tmp_idx = __pyx_v_i;
     Py_ssize_t __pyx_tmp_shape = __pyx_v_ret_c.shape[0];
@@ -2875,16 +2980,16 @@ static PyObject *__pyx_pf_11endocytosis_11endocytosis_10simulation_3obj_9cygauss
         PyErr_SetString(PyExc_IndexError, "Index out of bounds (axis 0)");
         __PYX_ERR(0, 54, __pyx_L1_error)
     }
-        __pyx_t_20.data += __pyx_tmp_idx * __pyx_tmp_stride;
+        __pyx_t_29.data += __pyx_tmp_idx * __pyx_tmp_stride;
 }
 
-__pyx_t_15 = -1;
+__pyx_t_2 = -1;
       if (unlikely(__pyx_memoryview_slice_memviewslice(
-    &__pyx_t_20,
+    &__pyx_t_29,
     __pyx_v_ret_c.shape[1], __pyx_v_ret_c.strides[1], __pyx_v_ret_c.suboffsets[1],
     1,
     0,
-    &__pyx_t_15,
+    &__pyx_t_2,
     __pyx_v_j,
     0,
     1,
@@ -2897,27 +3002,27 @@ __pyx_t_15 = -1;
 }
 
 {
-          double __pyx_temp_scalar = __pyx_t_18;
+          float __pyx_temp_scalar = __pyx_t_27;
           {
-              Py_ssize_t __pyx_temp_extent_0 = __pyx_t_20.shape[0];
-              Py_ssize_t __pyx_temp_stride_0 = __pyx_t_20.strides[0];
+              Py_ssize_t __pyx_temp_extent_0 = __pyx_t_29.shape[0];
+              Py_ssize_t __pyx_temp_stride_0 = __pyx_t_29.strides[0];
               char *__pyx_temp_pointer_0;
               Py_ssize_t __pyx_temp_idx_0;
-              __pyx_temp_pointer_0 = __pyx_t_20.data;
+              __pyx_temp_pointer_0 = __pyx_t_29.data;
               for (__pyx_temp_idx_0 = 0; __pyx_temp_idx_0 < __pyx_temp_extent_0; __pyx_temp_idx_0++) {
-                *((double *) __pyx_temp_pointer_0) = __pyx_temp_scalar;
+                *((float *) __pyx_temp_pointer_0) = __pyx_temp_scalar;
                 __pyx_temp_pointer_0 += __pyx_temp_stride_0;
               }
           }
       }
-      __PYX_XDEC_MEMVIEW(&__pyx_t_20, 1);
-      __pyx_t_20.memview = NULL;
-      __pyx_t_20.data = NULL;
+      __PYX_XDEC_MEMVIEW(&__pyx_t_29, 1);
+      __pyx_t_29.memview = NULL;
+      __pyx_t_29.data = NULL;
     }
   }
 
-  /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":57
- *                 -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)
+  /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":58
+ *                   (Y[i, j] - y)**2/sigma[1]))
  * 
  *     return ret_py             # <<<<<<<<<<<<<<
  */
@@ -2929,26 +3034,27 @@ __pyx_t_15 = -1;
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":42
  *     return numpy.float(ret)
  * 
- * def model(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+ * def model(float A, float [::1] sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
  * 
  */
 
   /* function exit code */
   __pyx_L1_error:;
-  __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_2);
-  __Pyx_XDECREF(__pyx_t_3);
-  __Pyx_XDECREF(__pyx_t_4);
-  __Pyx_XDECREF(__pyx_t_5);
-  __PYX_XDEC_MEMVIEW(&__pyx_t_6, 1);
-  __Pyx_XDECREF(__pyx_t_19);
-  __PYX_XDEC_MEMVIEW(&__pyx_t_20, 1);
+  __Pyx_XDECREF(__pyx_t_6);
+  __Pyx_XDECREF(__pyx_t_7);
+  __Pyx_XDECREF(__pyx_t_8);
+  __Pyx_XDECREF(__pyx_t_9);
+  __Pyx_XDECREF(__pyx_t_10);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_11, 1);
+  __Pyx_XDECREF(__pyx_t_28);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_29, 1);
   __Pyx_AddTraceback("endocytosis.endocytosis.simulation.obj.cygauss2d.model", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
   __Pyx_XDECREF(__pyx_v_ret_py);
   __PYX_XDEC_MEMVIEW(&__pyx_v_ret_c, 1);
+  __PYX_XDEC_MEMVIEW(&__pyx_v_sigma, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_X, 1);
   __PYX_XDEC_MEMVIEW(&__pyx_v_Y, 1);
   __Pyx_XGIVEREF(__pyx_r);
@@ -16618,7 +16724,6 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_kp_s_cygauss2d_pyx, __pyx_k_cygauss2d_pyx, sizeof(__pyx_k_cygauss2d_pyx), 0, 0, 1, 0},
   {&__pyx_n_s_data, __pyx_k_data, sizeof(__pyx_k_data), 0, 0, 1, 1},
   {&__pyx_n_s_dict, __pyx_k_dict, sizeof(__pyx_k_dict), 0, 0, 1, 1},
-  {&__pyx_n_s_double, __pyx_k_double, sizeof(__pyx_k_double), 0, 0, 1, 1},
   {&__pyx_n_s_dtype, __pyx_k_dtype, sizeof(__pyx_k_dtype), 0, 0, 1, 1},
   {&__pyx_n_s_dtype_is_object, __pyx_k_dtype_is_object, sizeof(__pyx_k_dtype_is_object), 0, 0, 1, 1},
   {&__pyx_n_s_encode, __pyx_k_encode, sizeof(__pyx_k_encode), 0, 0, 1, 1},
@@ -16628,6 +16733,7 @@ static __Pyx_StringTabEntry __pyx_string_tab[] = {
   {&__pyx_n_s_exp, __pyx_k_exp, sizeof(__pyx_k_exp), 0, 0, 1, 1},
   {&__pyx_n_s_flags, __pyx_k_flags, sizeof(__pyx_k_flags), 0, 0, 1, 1},
   {&__pyx_n_s_float, __pyx_k_float, sizeof(__pyx_k_float), 0, 0, 1, 1},
+  {&__pyx_n_s_float32, __pyx_k_float32, sizeof(__pyx_k_float32), 0, 0, 1, 1},
   {&__pyx_n_s_format, __pyx_k_format, sizeof(__pyx_k_format), 0, 0, 1, 1},
   {&__pyx_n_s_fortran, __pyx_k_fortran, sizeof(__pyx_k_fortran), 0, 0, 1, 1},
   {&__pyx_n_u_fortran, __pyx_k_fortran, sizeof(__pyx_k_fortran), 0, 1, 0, 1},
@@ -16941,9 +17047,9 @@ static int __Pyx_InitCachedConstants(void) {
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":26
  * 
  * 
- * def objective(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *                      double mx, double my, double b,
- *                      double [:,::1] data,
+ * def objective(float A, float sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *               float mx, float my, float b,
+ *               float [:,::1] data,
  */
   __pyx_tuple__22 = PyTuple_Pack(15, __pyx_n_s_A, __pyx_n_s_sigma, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_mx, __pyx_n_s_my, __pyx_n_s_b, __pyx_n_s_data, __pyx_n_s_X, __pyx_n_s_Y, __pyx_n_s_imax, __pyx_n_s_jmax, __pyx_n_s_ret, __pyx_n_s_i, __pyx_n_s_j); if (unlikely(!__pyx_tuple__22)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_tuple__22);
@@ -16953,8 +17059,8 @@ static int __Pyx_InitCachedConstants(void) {
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":42
  *     return numpy.float(ret)
  * 
- * def model(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+ * def model(float A, float [::1] sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
  * 
  */
   __pyx_tuple__24 = PyTuple_Pack(15, __pyx_n_s_A, __pyx_n_s_sigma, __pyx_n_s_x, __pyx_n_s_y, __pyx_n_s_mx, __pyx_n_s_my, __pyx_n_s_b, __pyx_n_s_X, __pyx_n_s_Y, __pyx_n_s_imax, __pyx_n_s_jmax, __pyx_n_s_ret_py, __pyx_n_s_ret_c, __pyx_n_s_i, __pyx_n_s_j); if (unlikely(!__pyx_tuple__24)) __PYX_ERR(0, 42, __pyx_L1_error)
@@ -17349,9 +17455,9 @@ if (!__Pyx_RefNanny) {
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":26
  * 
  * 
- * def objective(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *                      double mx, double my, double b,
- *                      double [:,::1] data,
+ * def objective(float A, float sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *               float mx, float my, float b,
+ *               float [:,::1] data,
  */
   __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_1objective, NULL, __pyx_n_s_endocytosis_endocytosis_simulati); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 26, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -17361,8 +17467,8 @@ if (!__Pyx_RefNanny) {
   /* "endocytosis/endocytosis/simulation/obj/cygauss2d.pyx":42
  *     return numpy.float(ret)
  * 
- * def model(double A, double sigma, double x, double y,             # <<<<<<<<<<<<<<
- *           double mx, double my, double b, int [:,::1] X, int [:,::1] Y):
+ * def model(float A, float [::1] sigma, float x, float y,             # <<<<<<<<<<<<<<
+ *           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
  * 
  */
   __pyx_t_1 = PyCFunction_NewEx(&__pyx_mdef_11endocytosis_11endocytosis_10simulation_3obj_9cygauss2d_3model, NULL, __pyx_n_s_endocytosis_endocytosis_simulati); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 42, __pyx_L1_error)
@@ -20429,7 +20535,7 @@ no_fail:
 }
 
 /* ObjectToMemviewSlice */
-        static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_double(PyObject *obj, int writable_flag) {
+        static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_d_dc_float(PyObject *obj, int writable_flag) {
     __Pyx_memviewslice result = { 0, 0, { 0 }, { 0 }, { 0 } };
     __Pyx_BufFmt_StackElem stack[1];
     int axes_specs[] = { (__Pyx_MEMVIEW_DIRECT | __Pyx_MEMVIEW_FOLLOW), (__Pyx_MEMVIEW_DIRECT | __Pyx_MEMVIEW_CONTIG) };
@@ -20440,7 +20546,7 @@ no_fail:
     }
     retcode = __Pyx_ValidateAndInit_memviewslice(axes_specs, __Pyx_IS_C_CONTIG,
                                                  (PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) | writable_flag, 2,
-                                                 &__Pyx_TypeInfo_double, stack,
+                                                 &__Pyx_TypeInfo_float, stack,
                                                  &result, obj);
     if (unlikely(retcode == -1))
         goto __pyx_fail;
@@ -20464,6 +20570,29 @@ __pyx_fail:
     retcode = __Pyx_ValidateAndInit_memviewslice(axes_specs, __Pyx_IS_C_CONTIG,
                                                  (PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) | writable_flag, 2,
                                                  &__Pyx_TypeInfo_int, stack,
+                                                 &result, obj);
+    if (unlikely(retcode == -1))
+        goto __pyx_fail;
+    return result;
+__pyx_fail:
+    result.memview = NULL;
+    result.data = NULL;
+    return result;
+}
+
+/* ObjectToMemviewSlice */
+        static CYTHON_INLINE __Pyx_memviewslice __Pyx_PyObject_to_MemoryviewSlice_dc_float(PyObject *obj, int writable_flag) {
+    __Pyx_memviewslice result = { 0, 0, { 0 }, { 0 }, { 0 } };
+    __Pyx_BufFmt_StackElem stack[1];
+    int axes_specs[] = { (__Pyx_MEMVIEW_DIRECT | __Pyx_MEMVIEW_CONTIG) };
+    int retcode;
+    if (obj == Py_None) {
+        result.memview = (struct __pyx_memoryview_obj *) Py_None;
+        return result;
+    }
+    retcode = __Pyx_ValidateAndInit_memviewslice(axes_specs, __Pyx_IS_C_CONTIG,
+                                                 (PyBUF_C_CONTIGUOUS | PyBUF_FORMAT) | writable_flag, 1,
+                                                 &__Pyx_TypeInfo_float, stack,
                                                  &result, obj);
     if (unlikely(retcode == -1))
         goto __pyx_fail;
