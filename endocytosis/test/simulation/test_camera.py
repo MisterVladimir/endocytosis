@@ -22,11 +22,12 @@ import unittest
 from ruamel import yaml
 import os
 
-from endocytosis.config.camera import YAMLCameraSpec, make_YAML
+import endocytosis.config.camera as camera
+from endocytosis.test import run
 
 __all__ = ['CameraSettingsTest']
 
-CAMERA_SETTINGS = YAMLCameraSpec()
+CAMERA_SETTINGS = camera.YAMLCameraSpec()
 CAMERA_SETTINGS.add_specs(electronsPerCount=15., readoutNoise=250.,
                           TrueEMGain=10.)
 CAMERA_SETTINGS.add_specs(electronsPerCount=11., readoutNoise=150.,
@@ -41,13 +42,13 @@ class CameraSettingsTest(unittest.TestCase):
     path = 'data.camera_spec.yaml'
 
     def setUp(self):
-        self.y = make_YAML()
+        self.y = camera.make_YAML()
 
     def test_instantiate(self):
-        self.assertFalse(YAMLCameraSpec())
+        self.assertFalse(camera.YAMLCameraSpec())
 
     def test_add_spec(self):
-        cs = YAMLCameraSpec()
+        cs = camera.YAMLCameraSpec()
         cs.add_specs(electronsPerCount=15., readoutNoise=250., TrueEMGain=10.)
         cs.add_specs(electronsPerCount=11., readoutNoise=150., TrueEMGain=12.,
                      EM='EM Gain On', readout_rate='17MHz', preamp_setting=3)
@@ -59,7 +60,7 @@ class CameraSettingsTest(unittest.TestCase):
         d2 = None
         with open(path, 'r') as f:
             d2 = self.y.load(f)
-        self.assertIsInstance(d2, YAMLCameraSpec)
+        self.assertIsInstance(d2, camera.YAMLCameraSpec())
 
     def check_equality(self, d1, d2):
         self.assertDictEqual(d1, d2)
@@ -90,13 +91,27 @@ class CameraSettingsTest(unittest.TestCase):
         d2 = None
         with open(path, 'r') as f:
             d2 = self.y.load(f)
-        self.assertIsInstance(d2, YAMLCameraSpec)
+        self.assertIsInstance(d2, camera.YAMLCameraSpec)
         self.check_equality(CAMERA_SETTINGS, d2)
 
         if os.path.isfile(path):
             os.remove(path)
 
 
+# TODO: improve coverage...
 class CameraTest(unittest.TestCase):
-    def setUp(self):
-        pass
+    path = os.path.join(
+            os.path.dirname(__file__), 'data', 'camera.yaml')
+
+    def test_load(self):
+        self.assertTrue(camera.load_camera_yaml(self.path, 'X-9309'))
+
+# add this to all test modules
+TESTS = [CameraSettingsTest, CameraTest]
+
+
+def run_module_tests():
+    run(TESTS)
+
+if __name__ == '__main__':
+    run_module_tests()

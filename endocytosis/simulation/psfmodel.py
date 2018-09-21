@@ -29,9 +29,8 @@ from fijitools.helpers.coordinate import Coordinate
 from fijitools.helpers.decorators import methdispatch
 from fijitools.helpers.iteration import isiterable
 
-import endocytosis.contrib.gohlke.psf as psf
-from endocytosis.simulation.psfmodel import cygauss2d
-from endocytosis.helpers.config import DEFAULT as cfg
+from ..contrib.gohlke import psf
+from ..simulation.obj import cygauss2d
 
 
 # TODO: write tests! test!
@@ -419,7 +418,7 @@ class Gaussian2D(AbstractPSFModel):
         raise NotImplementedError
 
 
-class SimpleGaussian2DModel(object):
+class SimpleGaussian2D(object):
     """
     Parameters
     -------------
@@ -428,17 +427,16 @@ class SimpleGaussian2DModel(object):
     """
     model_function = cygauss2d.model
 
-    def __init__(self, A, sigma, x, y, mx, my, b):
-        self.A, self.sigma, self.x, self.y, self.mx, self.my, self.b = \
-            A, sigma, x, y, mx, my, b
+    def __init__(self, sigma, x, y):
+        self.sigma, self.x, self.y = sigma, x, y
 
-    def render(self, shape):
+    def render(self, A, shape):
         dx, dy = shape
         X, Y = np.mgrid[:dx, :dy]
         x = dx // 2. + self.x
         y = dy // 2. + self.y
-        return self.model_function(self.A, self.sigma, x, y,
-                                   self.mx, self.my, self.b, X, Y)
+        return self.model_function(A, self.sigma, x, y,
+                                   0, 0, 0, X, Y)
 
 
 # not sure what to do with this for now

@@ -21,6 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from addict import Dict
 import sys
 from ruamel import yaml
+import numpy as np
+import copy
+
+from fijitools.helpers.iteration import isiterable
 
 
 class YAMLDict(Dict):
@@ -55,3 +59,79 @@ class YAMLDict(Dict):
         ret = YAMLDict()
         _flatten(self)
         return ret
+
+
+class TrackedSet(set):
+    """
+    Set that keeps track of items added and removed.
+    """
+    def __init__(self, iterable=None):
+        self.removed = set()
+        self.added = set()
+        if iterable:
+            super().__init__(iterable)
+            self._add_addable(iterable)
+        else:
+            super().__init__()
+
+    def _refresh(self):
+        temp = copy.copy(self.added)
+        self.added.difference_update(self.removed)
+        self.removed.difference_update(temp)
+
+    def _add_removeable(self, item):
+        if isiterable(item):
+            self.removed.update(item)
+        else:
+            self.removed.add(item)
+        self._refresh()
+
+    def _add_addable(self, item):
+        if isiterable(item):
+            self.added.update(item)
+        else:
+            self.added.add(item)
+        self._refresh()
+
+    def clear(self):
+        self.removed.update(self)
+        super().clear()
+
+    def remove(self, item):
+        super().remove(item)
+        self._add_removeable(item)
+
+    def difference_update(self, other):
+        other = set(other)
+        self._add_removeable(self.intersection(other))
+        super().difference_update(other)
+
+    def discard(self, other):
+        if other in self:
+            self._add_removeable(other)
+            super().discard(other)
+
+    def intersection_update(self, other):
+        other = set(other)
+        self._add_removeable(self.difference(other))
+        super().intersection_update(other)
+
+    def symmetric_difference_update(self, other):
+        other = set(other)
+        self._add_removeable(self.intersection(other))
+        add = other.difference(self)
+        self._add_addable(add)
+        super().symmetric_difference_update(other)
+
+    def pop(self):
+        ret = super().pop()
+        self._add_removeable(ret)
+        return ret
+
+    def update(self, other):
+        self._add_addable(other)
+        super().update(other)
+
+    def add(self, other):
+        self._add_addable(other)
+        super().add(other)

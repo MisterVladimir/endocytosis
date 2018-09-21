@@ -4,8 +4,7 @@ X-7291: !YAMLDict
   numGainElements: 592
   quantum_efficiency: 0.87
   serial_number: X-7291
-  specs: 
-    !YAMLCameraSpec
+  specs: !YAMLDict
     EM Gain On: !YAMLDict
       10MHz: !YAMLDict
         3: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 4.58, readoutNoise: 63.16} # TrueEMGain not measured
@@ -21,8 +20,7 @@ X-9309: !YAMLDict
   numGainElements: 592
   quantum_efficiency: 0.87
   serial_number: X-9309
-  specs: 
-    !YAMLCameraSpec
+  specs: !YAMLDict
     EM Gain On: !YAMLDict
       10MHz: !YAMLDict
         1: !YAMLDict {TrueEMGain: 0.0, electronsPerCount: 4.58, readoutNoise: 63.16} # TrueEMGain not measured

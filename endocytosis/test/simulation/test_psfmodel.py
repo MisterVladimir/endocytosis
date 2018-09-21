@@ -19,18 +19,25 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import unittest
-import numpy as np
 
-import endocytosis.simulation.noise as noise
-
-
-__all__ = ['EMCCDNoiseModelTest']
+from endocytosis.simulation.psfmodel import SimpleGaussian2D
+from endocytosis.test import run
 
 
-class EMCCDNoiseModelTest(unittest.TestCase):
+class TestSimpleGaussian2D(unittest.TestCase):
     def setUp(self):
-        self.im = np.zeros((5, 5))
-        self.model = noise.NoiseModel()
+        self.psf = SimpleGaussian2D(2., 5., 6.)
 
     def test_render(self):
-        self.model.render(self.im)
+        self.psf.render(100, (16, 16))
+
+
+# add this to all test modules
+TESTS = [TestSimpleGaussian2D, ]
+
+
+def run_module_tests():
+    run(TESTS)
+
+if __name__ == '__main__':
+    run_module_tests()

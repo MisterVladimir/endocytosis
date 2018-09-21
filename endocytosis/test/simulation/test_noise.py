@@ -19,6 +19,31 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import unittest
+import numpy as np
+import os
 
-import endocytosis.simulation.psfmodel as psfmodel
+from ...simulation.noise import NoiseModel
+from .. import run
 
+__all__ = ['EMCCDNoiseModelTest']
+
+
+class EMCCDNoiseModelTest(unittest.TestCase):
+    def setUp(self):
+        path = os.path.join(os.path.dirname(__file__), 'data', 'camera.yaml')
+        self.im = np.random.rand((5, 5)) * 100.
+        self.model = NoiseModel(path, 'X-7291')
+
+    def test_render(self):
+        self.model.render(self.im)
+
+
+# add this to all test modules
+TESTS = [EMCCDNoiseModelTest, ]
+
+
+def run_module_tests():
+    run(TESTS)
+
+if __name__ == '__main__':
+    run_module_tests()

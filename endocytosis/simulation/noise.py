@@ -47,7 +47,7 @@ class NoiseModel(object):
         else:
             gain = 'EM Gain Off'
         readout_rate = str(int(readout_rate)) + 'MHz'
-        preamp_setting = str(preamp_setting)
+        preamp_setting = int(preamp_setting)
         spec = spec[gain][readout_rate][preamp_setting]
         self.gain = spec['TrueEMGain']
         self.read_noise = spec['readoutNoise']

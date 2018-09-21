@@ -20,84 +20,72 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import unittest
 import argparse
-import os
+from os.path import relpath, sep, isfile, splitext, isdir
 from addict import Dict
-
-from test_psfmodel import *
-from test_noise import *
-
-# 
-MODULE_PATH_TO_TEST_NAME = Dict()
-MODULE_PATH_TO_TEST_NAME.simulation.noise.EMCCDNoiseModel = EMCCDNoiseModelTest
+import glob
+import importlib
+import os
 
 
-def get_tests(names):
+def get_module_names(path):
     """
-    Returns the test classes associated with a package directory.
-
-    Parameters
-    -----------
-    node: Dict
+    Recursively get all python modules (besides __init__) in path.
+    Returns module name as relative to path.
     """
-    def recurse_dict_values(node):
-        """
-        Returns all the values in the nested dictionary.
-        """
-        if isinstance(node, dict):
-            li = []
-            for val in node.values():
-                li += recurse_dict_values(val)
-            return li
-        elif isinstance(node, unittest.TestCase):
-            return [node]
-        else:
-            # pass
-            raise AssertionError('Not a TestCase.')
+    def recurse(p):
+        result = []
+        li = glob.glob(p + sep + '*')
+        dirs = [_p for _p in li if isdir(_p)]
+        files = \
+            [splitext(relpath(_p, path))[0].replace(sep, '.')
+             for _p in li if isfile(_p) and _p.endswith('.py') and
+             not _p.endswith('__init__.py')]
 
-    def path_to_dict(li, dic):
-        """
-        Iterate through list of node names, and return the final
-        node.
+        for d in dirs:
+            result += recurse(d) + files
+        return result
 
-        Parameters
-        -----------
-        li: list or tuple of strings
-        dic: Dict
-        """
-        try:
-            name = li[0]
-            if dic[name]:
-                return path_to_dict(li[1:], dic[name])
-        except IndexError:
-            # list ended
-            return dic[name]
-        else:
-            # last key look-up returned an empty Dict, which means
-            # that key was not present in the Dict
-            return False
+    return recurse(path)
 
-    tests = []
-    for name in names:
-        name = name.split('.')
-        res = path_to_dict(name, MODULE_PATH_TO_TEST_NAME)
-        if res:
-            tests += recurse_dict_values(res)
 
-    return tests
+def get_tests(li):
+    tests = [getattr(importlib.import_module(n), 'TESTS') for n in li]
+    ret = []
+    for t in tests:
+        ret += t
+    return ret
+
 
 MODULE_NAMES_HELP = ('Input the path of the item you would '
                      'like to test, e.g. endocytosis.simulation.noise')
 
 
+def run(tests):
+    """
+    Run a test.
+
+    Paramters
+    ------------
+    tests: iterable
+    Contains the unittest.TestCase to be run.
+    """
+    loader = unittest.TestLoader()
+    runner = unittest.TextTestRunner(verbosity=2)
+    for t in tests:
+        loaded = loader.loadTestsFromTestCase(t)
+        runner.run(loaded)
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-n', '--names', nargs='+', type=str,
+    parser.add_argument('-n', '--names', nargs='+',
                         required=False, help=MODULE_NAMES_HELP)
     args = parser.parse_args()
 
-    test_classes = get_tests(args.names)
-    loader = unittest.TestLoader()
-    runner = unittest.TextTestRunner(verbosity=2)
-    for class_ in test_classes:
-        loaded_tests = loader.loadTestsFromTestCase(class_)
-        runner.run(loaded_tests)
+    names = args.names
+    if not names:
+        names = os.path.abspath(os.path.dirname(__file__))
+
+    module_names = get_module_names(names)
+    tests = get_tests(names)
+    run(tests)
