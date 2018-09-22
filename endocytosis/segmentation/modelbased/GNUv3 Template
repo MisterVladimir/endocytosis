@@ -18,30 +18,3 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-import tensorflow as tf
-
-from endocytosis.io import IO
-
-
-class RecordWriter(IO):
-    """
-    Saves image
-    """
-    def __init__(self, image_reader, roi_reader, **options):
-        super().__init__()
-
-    @staticmethod
-    def _to_int64_feature(value):
-        return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
-
-    @staticmethod
-    def _to_float_feature(value):
-        return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
-
-    @staticmethod
-    def _to_bytes_feature(value):
-        return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
-
-    
-

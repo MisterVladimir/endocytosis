@@ -155,14 +155,14 @@ def create_extension(path_as_list, sources, module_name):
     sources = [parent_directory + s for s in sources]
     name = os.path.extsep.join(path_as_list + [module_name])
 
-    ext = Extension(name, sources, include_dirs=[get_include()],
-                    extra_compile_args=compile_args, extra_link_args=link_args)
-
-    return ext
+    return Extension(name, sources, include_dirs=[get_include()],
+                     extra_compile_args=compile_args,
+                     extra_link_args=link_args)
 
 if __name__ == '__main__':
     from setuptools import find_packages
-    kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'obj'],
+    kwargs = [{'path_as_list': ['endocytosis', 'segmentation',
+                                'modelbased', 'obj'],
                'sources': ['cygauss2d.c'],
                'module_name': 'cygauss2d'},
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
@@ -177,7 +177,6 @@ if __name__ == '__main__':
     setup(name='endocytosis',
           version=ver,
           packages=find_packages(),
-          # ext_package=pkg,
           ext_modules=ext,
           python_requires='>=3.6',
           install_requires=get_requirements('java'),

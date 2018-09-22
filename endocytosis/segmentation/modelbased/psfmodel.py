@@ -62,12 +62,13 @@ class HDF5Attribute(object):
     """
     def __init__(self, value, h5path, dirty=False):
         self._value = value
+        self._old_value = value
         self._dirty = dirty
         self._h5path = h5path
 
     @property
     def dirty(self):
-        return self._dirty
+        return not np.all(self._value == self._old_value) and self._dirty
 
     @property
     def value(self):
@@ -97,56 +98,36 @@ class AbstractPSFModel(ABC):
     appropriately-formated HDF5 files.
 
     hdf5 file structure is:
-        [model_name][parameters][attribute_0]
-                                [attribute_1]
-                                 ...
-                                [attribute_m]
-
-                    [data][parameters][attribute_0]
-                                      [attribute_1]
-                                       ...
-                                      [attribute_n]
-                          [indices]
+        [model_name][parameter_0]
+                    [parameter_1]
+                     ...
+                    [parameter_m]
+                    [indices]
         [image]
 
-    Each attribute is an attribute specific to this class' PSF model class,
+    Each parameter is a parameter specific to this class' PSF model,
     e.g. Gaussian2D model would contain values for amplitude ('A'),
     standard deviation ('sigma'), and center coördinate ('x', 'y').
-    Attribute names are in cls.model_specific_attributes. Model names are
+    Parameter names are in cls.model_parameters. Model names are
     simply the class' __name__.
 
-    Optionally, the [data] group may contain datasets on which the above
-    'parameters' were based. For example, if 'parameters' were derived from
-    the Gaussian2D model, fit to diffraction-limited spots in a 2D image, we
-    might want to include the parameters ('A', 'sigma', etc.) of each spot as
-    array datasets. Once the dataset is loaded, ['data']'s datasets are bound
-    to protected variables named after the datasets' keys.
-
-    #########################################################################
     The ['image'] dataset in the example structure should store the cropped
-    ROI as a 3d array whose dimensions are [index, x, y].
-    #########################################################################
+    ROI whose dimensions are [roi index, t, x, y].
     """
     ndim = None
-    model_specific_attributes = []
-    data_attributes = ['indices', '']
+    model_parameters = ['indices']
     objective_function = None
     model_function = None
 
-    def __init__(self, h5_filename='temp.h5', save_upon_exit=True):
+    def __init__(self, h5_filename, save_upon_exit=True):
         # assign class attributes from h5py file
         err_string = self._check_file_ext(h5_filename)
         if err_string:
             raise NameError(err_string)
 
         abs_h5_filename = os.path.abspath(h5_filename)
-        try:
-            self.h5file = h5py.File(abs_h5_filename, 'r+')
-            has_image = self.check_h5_file_structure()
-            self.load_h5(has_image)
-
-        except OSError:
-            self.make_empty_HDF5(abs_h5_filename)
+        self.h5file = h5py.File(abs_h5_filename, 'r+')
+        self.load_h5()
 
         self.save_upon_exit = save_upon_exit
         self.hdf5_filename = abs_h5_filename
@@ -177,102 +158,47 @@ class AbstractPSFModel(ABC):
         ext = os.path.splitext(filename)[1]
         h5ext = ['.h5', '.hdf5', '.hf5', '.hd5']
         if ext not in h5ext:
-            return "Input HDF5 filename has extension " + \
-                "{}. Please use one of the following: {}".format(
-                    ext, str(h5ext)[1:-1])
+            return ("Input HDF5 filename has extension " +
+                    "{}. Please use one of the following: {}".format(
+                        ext, str(h5ext)[1:-1]))
 
     def check_attrs(self, attrs, keys):
-        """
-        Make sure there's enough data in the HDF5 file.
-        """
-        return set(attrs).difference(set(keys))
+        return set(attrs).difference(set(list(keys)))
 
     @property
     def dirty(self):
-        return [getattr(self, a) for a in
-                self.model_specific_attributes + self.data_attributes]
+        return [getattr(self, a) for a in self.model_parameters
+                if getattr(self, a).dirty]
 
-    def make_empty_HDF5(self, filename):
-        try:
-            self._image = None
-            self.h5file = h5py.File(filename, 'a')
-            cls_grp = self.h5file.create_group(self.__class__.__name__)
-            param_grp = cls_grp.create_group('parameters')
-            for msa in self.model_specific_attributes:
-                dset = param_grp.create_dataset(name=msa, shape=(), dtype='f4')
-                self.__dict__[msa] = HDF5Attribute(0., dset.name)
-
-            data_grp = cls_grp.create_group('data')
-            _ = data_grp.create_group('parameters')
-            # XXX: note to self: use 'require_dataset' when creating the
-            # 'image' dataset in self.h5file[self.__class__.__name__]
-            # and any parameter datasets in
-            # self.h5file[self.__class__.__name__]['data']['parameters']
-
-            self.h5file.attrs['h5_filename'] = filename
-            self.h5file.attrs['imshape'] = 0
-
-        except Exception as e:
-            # XXX: is this already called by self.__exit__?
-            self.cleanup(remove_h5_file=True)
-            raise Exception("There was an error while creating the "
-                            "empty HDF5 file.") from e
-
-    def load_h5(self, has_image):
-        if has_image:
+    def load_h5(self):
+        if 'image' in self.h5file:
             self._image = self.h5file['image']
         else:
             self._image = None
 
         cls_grp = self.h5file[self.__class__.__name__]
-        for attr in self.model_specific_attributes:
-            dset = cls_grp[attr]
-            self.__dict__[attr] = HDF5Attribute(self.dataset_to_numpy(dset),
-                                                dset.name)
+        missing = self.check_attrs(self.model_parameters,
+                                   cls_grp.keys())
+        if not missing:
+            for attr in self.model_parameters:
+                dset = cls_grp[attr]
+                self.__dict__[attr] = HDF5Attribute(
+                    self.dataset_to_numpy(dset), dset.name)
 
-        try:
-            param_grp = cls_grp['data']['parameters']
-        except KeyError:
-            data_grp = cls_grp.require_group('data')
-            _ = data_grp.create_group('parameters')
+            if 'indices' in cls_grp.keys():
+                dset = cls_grp['indices']
+                ind = self.dataset_to_numpy(dset)
+                self.__dict__['indices'] = HDF5Attribute(ind, dset.name)
+            else:
+                indices = np.arange(len(dset))
+                dset = cls_grp.require_dataset('indices', len(indices), int,
+                                               indices)
+                self.__dict__['indices'] = HDF5Attribute(indices, dset.name)
         else:
-            missing = self.check_attrs(self.model_specific_attributes,
-                                       param_grp.keys())
-            if not missing:
-                for name, dset in param_grp.items():
-                    self.__dict__['_' + name] = HDF5Attribute(
-                        self.dataset_to_numpy(dset), dset.name)
-                data_grp = cls_grp['data']
-                if 'indices' in data_grp.keys():
-                    dset = data_grp['indices']
-                    ind = self.dataset_to_numpy(dset)
-                    self.__dict__['indices'] = HDF5Attribute(ind, dset.name)
-                else:
-                    self.__dict__['indices'] = HDF5Attribute(
-                        np.arange(len(dset.value)), dset.name)
-
-    def check_h5_file_structure(self):
-        try:
-            clsgrp = self.h5file[self.__class__.__name__]
-        except KeyError as e:
-            self.save_upon_exit = False
-            self.cleanup()
-            raise NameError("Class name not a dataset in the HDF5 "
-                            "file.") from e
-
-        missing = self.check_attrs(self.model_specific_attributes,
-                                   clsgrp.keys())
-        if missing:
             self.save_upon_exit = False
             self.cleanup()
             raise ValueError("Parameters {} are missing from the HDF5 "
                              "file.".format(str(missing)[1:-1]))
-
-        grp_names = [get_final_name(k) for k in self.h5file.keys()]
-        if 'image' in grp_names:
-            return True
-        else:
-            return False
 
     def dataset_to_numpy(self, dset):
         if isiterable(dset.value):
@@ -309,9 +235,9 @@ class AbstractPSFModel(ABC):
 
     def save(self):
         for attr in self.dirty:
-            if isinstance(attr.value, np.ndarray):
-                shape = attr.value.shape
-                typ = attr.value.dtype
+            if isiterable(attr.value):
+                shape = np.shape(attr.value)
+                typ = type(attr.value[0])
             else:
                 shape = ()
                 typ = type(attr.value)
@@ -319,26 +245,29 @@ class AbstractPSFModel(ABC):
                 del self.h5file[attr.h5path]
             except KeyError:
                 pass
-            self.h5file.create_dataset(attr.h5path, shape, typ)
-            self.h5file[attr.h5path] = attr.value
+            dset = self.h5file.create_dataset(attr.h5path, shape, typ,
+                                              attr.value)
+            if isiterable(attr.value):
+                dset.attrs['mean'] = np.mean(attr.value)
+                dset.attrs['var'] = np.var(attr.value)
 
 
 class Gaussian2D(AbstractPSFModel):
     """
     """
     ndim = 2
-    model_specific_attributes = ['A', 'sigma', 'x', 'y',
-                                 'mx', 'my', 'b']
+    model_parameters = ['A', 'sigma', 'x', 'y',
+                        'mx', 'my', 'b']
     objective_function = cygauss2d.objective
     model_function = cygauss2d.model
 
-    def __init__(self, h5_filename='temp.h5', save_upon_exit=True):
+    def __init__(self, h5_filename, save_upon_exit=True):
         super().__init__(h5_filename, save_upon_exit)
         self.rendered = False
 
     def __repr__(self):
         attrs = "".join(["\n\t" + ': '.join((a, np.round(getattr(a), 2)))
-                         for a in self.model_specific_attributes])
+                         for a in self.model_parameters])
         return "{0!s}:\n\t{1}".format(self, attrs)
 
     def __str__(self):
@@ -346,43 +275,54 @@ class Gaussian2D(AbstractPSFModel):
 
     def render(self, shape, index=None):
         """
-        Returns a 2d np.ndarray containing a 2d image of the model.
+        Returns a 2d np.ndarray generated by the model.
 
         Parameters
         -----------
         index: int or None
 
         shape: tuple, list, or np.ndarray
-
         """
         if index:
             A, sigma, x, y, mx, my, b = \
-                [getattr(self, '_' + n).value[index]
-                 for n in self.model_specific_attributes]
+                [getattr(self, n).value[index] for n in self.model_parameters]
         else:
             A, sigma, x, y, mx, my, b = \
-                [getattr(self, n).value
-                 for n in self.model_specific_attributes]
+                [getattr(self, n).value.mean() for n in self.model_parameters]
 
         dx, dy = shape
         X, Y = np.mgrid[:dx, :dy]
-        raveled_im = self.model_function(A, sigma, x, y, mx, my, b, X, Y)
         self.rendered = True
-        return raveled_im.reshape(X.shape, dtype=np.float32)
+        return self.model_function(A, sigma, x, y, mx, my, b, X, Y)
 
-    def fit_model(self, index=None):
+    def fit_model(self, index, t):
         """
-        Fits images stored in the /data Dataset of self.h5file to Gaussian
-        PSFs.
+        Fits image data to the model. Note that data to be fit must be 3D, so
+        at least one of 'index' or 't' must be an integer.
+
+        Parameters
+        -----------
+        index: int
+        ROI index.
+
+        t: int
+        Time index.
         """
-        data = np.atleast_3d(self.image).astype(float)
-        if index:
-            data = np.atleast_3d(data[index])
+        def to_tuple(arg):
+            if isiterable(arg) and not isinstance(arg, dict):
+                return tuple(arg)
+            else:
+                return arg
+
+        # as of numpy 1.15, indices may not be lists or np.ndarrays,
+        # only tuples
+        index, t = to_tuple(index), to_tuple(t)
+        data = np.atleast_3d(self.image[index, t]).astype(np.float32)
 
         # initial parameters (an educated guess)
-        sigma = 1.25
-        x, y = np.array(data.shape[1:])
-        mx, my, b = 0.01, 0.01, 0.0
+        sigma = np.float32(self.h5file['image'].attrs['pixelsize'])
+        x, y = np.array(data.shape[-2:] / 2., dtype=np.float32)
+        mx, my, b = np.array([0.01, 0.01, 0.0], dtype=np.float32)
         X, Y = np.mgrid[:data.shape[1], :data.shape[2]]
         A = np.max(data)
 
@@ -392,24 +332,21 @@ class Gaussian2D(AbstractPSFModel):
                   for d in data]
 
         success = [res['success'] for res in result]
+        indices = np.arange(len(result), dtype=int)[success]
         cls_name = self.__class__.__name__
         self.indices = HDF5Attribute(
-            success, '/{}/data/parameters/indices'.format(cls_name), True)
+            indices, '/{}/parameters/indices'.format(cls_name), True)
 
         params = np.array([res['x'] for res in result])
 
         if params.size > 0:
             self.A, self.sigma, self.x, self.y, self.mx, self.my, self.b = \
                 [HDF5Attribute(p, '/{}/{}'.format(cls_name, a), True) for
-                 p, a in zip(params.mean(0), self.model_specific_attributes)]
-            (self._A, self._sigma, self._x, self._y, self._mx, self._my,
-             self._b) = [HDF5Attribute(
-                 p, '/{}/data/parameters/_{}'.format(cls_name, a), True)
-                 for p, a in zip(params.T, self.model_specific_attributes)]
+                 p, a in zip(params, self.model_parameters)]
         else:
             raise Exception("Model fitting was not successful.")
 
-        return result, success
+        return result, indices
 
     def bic_function(self, n, k, sigma):
         return n * np.log(sigma) + k * np.log(n)
