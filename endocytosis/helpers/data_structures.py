@@ -18,13 +18,77 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from addict import Dict
+from addict import Dict as _Dict
 import sys
 from ruamel import yaml
 import numpy as np
 import copy
 
 from fijitools.helpers.iteration import isiterable
+
+
+class Dict(_Dict):
+    @classmethod
+    def flatten(cls, dic):
+        def _flatten(_dic, _key):
+            if isinstance(_dic, dict):
+                for k, v in _dic.items():
+                    _flatten(v, k)
+            elif isiterable(_dic):
+                for item in _dic:
+                    _flatten(item, _key)
+            else:
+                ret.update({_key: _dic})
+        ret = {}
+        _flatten(dic, None)
+        return ret
+
+
+class IndexedDict(dict):
+    """
+    Allows setting and getting keys/values by passing in the key index. 
+
+    We cannot use an integer key to set a value to None. The workaround is to
+    use a key of type slice and an iterable containing None:
+    >>> d = IndexedDict()
+    >>> d['a'] = 0
+    >>> d.iloc(slice(1), [None])
+    >>> d
+    {'a': None}
+    """
+    def _get_with_int(self, key, value):
+        return self[key]
+
+    def _get_with_slice(self, key, value):
+        return [self[k] for k in key]
+
+    def _set_with_int(self, key, value):
+        self[key] = value
+
+    def _set_with_slice(self, key, value):
+        for k, v in zip(key, value):
+            self[k] = v
+
+    def iloc(self, i, value=None):
+        try:
+            keys = list(self.keys())[i]
+        except IndexError as e:
+            raise KeyError('Key must be set via self.__setitem__ before '
+                           'referencing it via the .iloc() method.') from e
+        else:
+            method_dict = {(True, False): self._get_with_int,
+                           (True, True): self._get_with_slice,
+                           (False, False): self._set_with_int,
+                           (False, True): self._set_with_slice}
+
+            try:
+                method = method_dict[(value is None,
+                                      isiterable(keys) and isiterable(value))]
+            except KeyError as e:
+                raise TypeError(
+                    'If key is iterable, value must also be iterable.') from e
+            else:
+                return method(keys, value)
 
 
 class YAMLDict(Dict):
@@ -48,17 +112,6 @@ class YAMLDict(Dict):
     @classmethod
     def from_yaml(cls, constructor, node):
         return cls.load(constructor, node)
-
-    def flatten(self):
-        def _flatten(dic):
-            for k, v in dic.items():
-                if isinstance(v, dict):
-                    _flatten(v)
-                else:
-                    ret.update({k: v})
-        ret = YAMLDict()
-        _flatten(self)
-        return ret
 
 
 class TrackedSet(set):

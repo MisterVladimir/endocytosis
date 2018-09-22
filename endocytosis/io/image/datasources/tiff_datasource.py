@@ -22,8 +22,7 @@ import numpy as np
 import copy
 
 import endocytosis.contrib.gohlke.tifffile as tifffile
-from endocytosis.io.image.datasources.base_datasource import (BaseImageRequest,
-                                                              FileDatasource)
+from .base_datasource import BaseImageRequest, FileDataSource
 
 
 class TiffImageRequest(BaseImageRequest):
@@ -37,13 +36,13 @@ class TiffImageRequest(BaseImageRequest):
 
         # the requested index, stored as values in self, is rearranged to the
         # dimension order that the tiff image is in
-        index = np.array(self[order])
+        index = self[order]
         from_ints = np.array([0 if isinstance(i, slice) else i
                               for i in index])[:, None]
 
         # check if any slice objects have been passed in
         # convert any slices to lists of integers
-        is_slice = tuple([isinstance(item, slice) for item in index])
+        is_slice = [isinstance(item, slice) for item in index]
         n_slice_objects = sum(is_slice)
         if n_slice_objects > 1:
             raise TypeError('Only one slice item may be present in the '
@@ -53,8 +52,9 @@ class TiffImageRequest(BaseImageRequest):
         else:
             # convert slice objects to lists of integers
             # where the index is an integer, leave array of zeros
-            sl = index[is_slice]
-            sliced_dim_length = tif_shape[is_slice]
+            slice_index = np.flatnonzero(is_slice)[0]
+            sl = index[slice_index]
+            sliced_dim_length = tif_shape[slice_index]
             start, stop, step = sl.indices(sliced_dim_length)
             length = (stop - start) // step
             from_slices = [np.arange(*j.indices(i))
@@ -65,6 +65,7 @@ class TiffImageRequest(BaseImageRequest):
             # replace all the zeros with indices passed in as integers
             as_integers = from_ints + from_slices
         # finally, identify the tif page data is in
+        # throws ValueError if that CTZ combination is out of range
         page_indices = np.ravel_multi_index(as_integers,
                                             tif_shape, order='C')
         return page_indices
@@ -93,7 +94,7 @@ class TiffImageRequest(BaseImageRequest):
             raise e
 
 
-class TiffDataSource(FileDatasource):
+class TiffDataSource(FileDataSource):
     module_name = 'tiff_datasource'
 
     def __init__(self, path, request):
@@ -110,7 +111,10 @@ class TiffDataSource(FileDatasource):
         (channel, time, axial position) in that order.
         """
         n, x, y = self._request(*ctzxy)
-        return self.datasource.asarray(key=n)[x, y]
+        im = self.datasource.asarray(key=n)
+        if im.ndim == 2:
+            im = im[None, :]
+        return im[(slice(None), x, y)]
 
     def cleanup(self):
         self.datasource.close()

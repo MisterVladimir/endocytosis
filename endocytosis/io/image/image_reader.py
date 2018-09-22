@@ -45,24 +45,22 @@ class ImageReader(IO):
         from endocytosis.contrib.gohlke import tifffile
         from endocytosis.io.image.datasources import tiff_datasource
         # placeholder for more sophisticated metadata extraction
-        is_imagej = False
         with tifffile.TiffFile(path) as tif:
-            if tif.is_imagej:
-                self.metadata = metadata.MetaData(tif.imagej_metadata,
-                                                  'ImageJ',
-                                                  tif.filename)
-                is_imagej = True
+            if tif.is_imagej and not tif.is_ome:
+                self.is_imagej = tif.is_imagej
+                self.is_ome = False
+                self.metadata = metadata.MetaData(tif.imagej_metadata)
             elif tif.is_ome:
-                self.metadata = metadata.MetaData(tif.imagej_metadata,
-                                                  'OME',
-                                                  tif.filename)
+                self.is_imagej = tif.is_imagej
+                self.is_ome = True
+                self.metadata = metadata.MetaData(tif.ome_metadata)
             else:
-                raise TypeError('')
+                raise NotImplementedError('')
         md = self.metadata
         shape = [md['SizeC'], md['SizeT'], md['SizeZ'],
                  md['SizeX'], md['SizeY']]
         shape = list(map(int, shape))
-        if is_imagej:
+        if self.is_imagej and not self.is_ome:
             # not sure if 'YX' is correct
             request = tiff_datasource.TiffImageRequest('TZCYX', *shape)
         else:

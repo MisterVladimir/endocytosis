@@ -26,6 +26,7 @@ class Error(Exception):
     pass
 
 
+# XXX: probably unnecessary...should raise IOError instead
 class DatasourceError(Error):
     """
     Exception raised for errors in the input.

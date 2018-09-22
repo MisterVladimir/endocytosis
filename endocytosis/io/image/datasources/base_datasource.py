@@ -21,10 +21,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from collections import OrderedDict
 from abc import abstractmethod
+from fijitools.helpers.iteration import isiterable
 
-from endocytosis.io import IO
-from fiji_tools.helpers.data_structures import IndexedDict
-from fiji_tools.helpers.error import DatasourceError
+from endocytosis.helpers.data_structures import IndexedDict
+from ... import IO
 
 
 class BaseImageRequest(IndexedDict):
@@ -49,7 +49,7 @@ class BaseImageRequest(IndexedDict):
 
 #    retrive image in the first channel, third timepoint, and all z slices
 #    call the datasource's request method with arguments in C, T, Z order
-    z_stack = datasource.request(0,2,slice(None))
+    z_stack = datasource.request(0,2 , slice(None))
     """
     module_name = 'base_datasource'
 
@@ -73,9 +73,10 @@ class BaseImageRequest(IndexedDict):
         self.image_shape.update(dict(zip('CTZXY', shape)))
 
     def __setitem__(self, key, value):
-        if isinstance(key, str) and len(key) > 1:
-            for i, k in enumerate(key):
-                super().__setitem__(k, value[i])
+        if isinstance(key, str) and isiterable(value):
+            if len(key) == len(list(value)) > 1:
+                for i, k in enumerate(key):
+                    super().__setitem__(k, value[i])
         else:
             super().__setitem__(key, value)
 
@@ -94,19 +95,21 @@ class BaseImageRequest(IndexedDict):
     def insert(self, index, value):
         raise NotImplementedError('')
 
+    @abstractmethod
     def __call__(self, *ctzxy):
         raise NotImplementedError('')
 
 
 class FileDataSource(IO):
     """
-    Abstract base class.
+    Abstract base class for pulling image data from a file.
     """
     module_name = 'base_datasource'
 
     @abstractmethod
     def request(self, *ctzxy):
         return NotImplemented
+
 
 # TODO: untested
 class NestedDataSource(IO):
@@ -121,7 +124,7 @@ class NestedDataSource(IO):
         super().__init__()
         # check that we have image data
         if not self.__class__.has_file_source(data):
-            raise DatasourceError('No image.')
+            raise IOError('No image.')
 
     @staticmethod
     def has_file_source(ds):
