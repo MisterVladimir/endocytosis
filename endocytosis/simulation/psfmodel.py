@@ -30,7 +30,7 @@ from fijitools.helpers.decorators import methdispatch
 from fijitools.helpers.iteration import isiterable
 
 from ..contrib.gohlke import psf
-from ..simulation.obj import cygauss2d
+from .obj import cygauss2d
 
 
 # TODO: write tests! test!
@@ -104,6 +104,8 @@ class AbstractPSFModel(ABC):
                     [parameter_m]
                     [indices]
         [image]
+        [spots]['image']
+               ['topleft']
 
     Each parameter is a parameter specific to this class' PSF model,
     e.g. Gaussian2D model would contain values for amplitude ('A'),
@@ -111,8 +113,13 @@ class AbstractPSFModel(ABC):
     Parameter names are in cls.model_parameters. Model names are
     simply the class' __name__.
 
-    The ['image'] dataset in the example structure should store the cropped
-    ROI whose dimensions are [roi index, t, x, y].
+    The ['spots'] dataset in the example structure should store the cropped
+    ROI whose dimensions are [roi index, t, x, y]. Note that each spot
+    has a 'topleft' attribute that describes its xy coördinate in the image
+    from which it was cropped.
+
+    ['image'] is the image data source of ['spots'], i.e. the original image
+    from where they were cropped.
     """
     ndim = None
     model_parameters = ['indices']
@@ -171,10 +178,10 @@ class AbstractPSFModel(ABC):
                 if getattr(self, a).dirty]
 
     def load_h5(self):
-        if 'image' in self.h5file:
-            self._image = self.h5file['image']
+        if 'spots' in self.h5file:
+            self._spots = self.h5file['spots']
         else:
-            self._image = None
+            self._spots = None
 
         cls_grp = self.h5file[self.__class__.__name__]
         missing = self.check_attrs(self.model_parameters,
@@ -211,10 +218,10 @@ class AbstractPSFModel(ABC):
             raise TypeError("{} not a compatible type.".format(dset.value))
 
     @property
-    def image(self):
-        return self._image
+    def spots(self):
+        return self.h5file['/spots/image']
 
-    def set_image(self, arr, **attrs):
+    def set_spots(self, arr, topleft, pixelsize=None):
         """
         Images may be big so instead of loading them into memory we read their
         data from the HDF5 file (hard drive). Once the image Dataset is set,
@@ -228,28 +235,16 @@ class AbstractPSFModel(ABC):
         attrs
         Attributes to the Dataset. This should probably be image metadata.
         """
-        im = self.h5file.create_dataset('image', arr.shape, data=arr)
-        for k, v in attrs.items():
-            im.attrs[k] = v
-        self._image = im
+        sp = self.h5file.create_group('spots')
+        sp.create_dataset('image', arr.shape, data=arr)
+        sp.create_dataset('topleft', dtype=int, data=topleft)
+        if not pixelsize:
+            pixelsize = self.h5file['image'].attrs['pixelsize']
+        sp.attrs['pixelsize'] = pixelsize
 
     def save(self):
         for attr in self.dirty:
-            if isiterable(attr.value):
-                shape = np.shape(attr.value)
-                typ = type(attr.value[0])
-            else:
-                shape = ()
-                typ = type(attr.value)
-            try:
-                del self.h5file[attr.h5path]
-            except KeyError:
-                pass
-            dset = self.h5file.create_dataset(attr.h5path, shape, typ,
-                                              attr.value)
-            if isiterable(attr.value):
-                dset.attrs['mean'] = np.mean(attr.value)
-                dset.attrs['var'] = np.var(attr.value)
+            self.h5file[attr.name].write_direct(attr.value)
 
 
 class Gaussian2D(AbstractPSFModel):
@@ -317,10 +312,10 @@ class Gaussian2D(AbstractPSFModel):
         # as of numpy 1.15, indices may not be lists or np.ndarrays,
         # only tuples
         index, t = to_tuple(index), to_tuple(t)
-        data = np.atleast_3d(self.image[index, t]).astype(np.float32)
+        data = np.atleast_3d(self.spots[index, t]).astype(np.float32)
 
         # initial parameters (an educated guess)
-        sigma = np.float32(self.h5file['image'].attrs['pixelsize'])
+        sigma = np.float32(self.h5file['spots'].attrs['pixelsize'])
         x, y = np.array(data.shape[-2:] / 2., dtype=np.float32)
         mx, my, b = np.array([0.01, 0.01, 0.0], dtype=np.float32)
         X, Y = np.mgrid[:data.shape[1], :data.shape[2]]

@@ -35,8 +35,12 @@ class Dict(_Dict):
                 for k, v in _dic.items():
                     _flatten(v, k)
             elif isiterable(_dic):
-                for item in _dic:
-                    _flatten(item, _key)
+                # list of either dicts or non-dict values
+                if all([isinstance(i, dict) for i in _dic]):
+                    for item in _dic:
+                        _flatten(item, _key)
+                else:
+                    ret.update({_key: _dic})
             else:
                 ret.update({_key: _dic})
         ret = {}
@@ -46,7 +50,7 @@ class Dict(_Dict):
 
 class IndexedDict(dict):
     """
-    Allows setting and getting keys/values by passing in the key index. 
+    Allows setting and getting keys/values by passing in the key index.
 
     We cannot use an integer key to set a value to None. The workaround is to
     use a key of type slice and an iterable containing None:

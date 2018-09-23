@@ -35,15 +35,17 @@ class NoiseModel(object):
     camera_serial_number: str
     Serial number of the camera whose metadata we'd like to use.
     """
-    def __init__(self, path, camera_serial_number):
+    def load_camera_metadata(self, path, camera_serial_number):
         self.path = path
         self.camera_serial_number = camera_serial_number
-        self._data = load_camera_yaml(path, camera_serial_number)
+        self.camera_data = load_camera_yaml(path, camera_serial_number)
+        try:
+            self.camera_data['ADOffset']
+        except KeyError:
+            raise IOError('Metadata was not imported.')
 
-    def load_camera_metadata(self, EMGainOn, readout_rate, preamp_setting):
-        spec = self._data['specs']
-        self.ADOffset = self._data['ADOffset']
-        assert self.ADOffset, "Metadata not imported correctly."
+    def _get_settings_from_cam(self, EMGainOn, readout_rate, preamp_setting):
+        spec = self.camera_data['specs']
         if EMGainOn:
             gain = 'EM Gain On'
         else:
@@ -51,12 +53,27 @@ class NoiseModel(object):
         readout_rate = str(int(readout_rate)) + 'MHz'
         preamp_setting = int(preamp_setting)
         spec = spec[gain][readout_rate][preamp_setting]
-        self.gain = spec['TrueEMGain']
-        self.read_noise = spec['readoutNoise']
-        self.electrons_per_count = spec['electronsPerCount']
+        return (self.camera_data['ADOffset'], spec['TrueEMGain'],
+                spec['readoutNoise'], spec['electronsPerCount'])
+
+    def use_camera(self, EMGainOn, readout_rate, preamp_setting):
+        s = self._get_settings_from_cam(EMGainOn, readout_rate, preamp_setting)
+        self.set_parameters(*s)
+
+    def use_hdf5(self, grp):
+        keys = ['ADOffset', 'TrueEMGain', 'readoutNoise', 'electronsPerCount']
+        val = [grp[k].value for k in keys]
+        self.set_parameters(*val)
+
+    def set_parameters(self, ADOffset, TrueEMGain, readoutNoise,
+                       electronsPerCount):
+        self.ADOffset = ADOffset
+        self.TrueEMGain = TrueEMGain
+        self.readoutNoise = readoutNoise
+        self.electronsPerCount = electronsPerCount
 
     def render(self, im):
-        n_electrons = self.gain*2*np.random.poisson((im)/2)
+        n_electrons = self.TrueEMGain*2*np.random.poisson((im)/2)
         return (n_electrons +
-                self.read_noise * np.random.standard_normal(n_electrons.shape)
-                )/self.electrons_per_count + self.ADOffset
+                self.readoutNoise * np.random.standard_normal(im.shape)
+                )/self.electronsPerCount

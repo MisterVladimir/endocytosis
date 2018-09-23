@@ -51,6 +51,7 @@ class FieldOfView(object):
 
         self.pixelsize = pixelsize
         self.psf = psfmodel
+        self.psf.sigma.pixelsize = pixelsize
         self.noise = noise_model
         self.dirty = False
         self.children = TrackedSet()
@@ -127,13 +128,12 @@ class FieldOfView(object):
 
         return sldata, slobj
 
-    def _render_children(self, child, add=True):
+    def _render_children(self, child, add):
         # there is probably a more elegant way to do this, like with
-        # dispatching
+        # Python's function dispatching
         if isiterable(child) and not isinstance(child, dict):
             self._render_iterable(child, add)
         elif isinstance(child, dict):
-            # potential bug: if it's a nested dictionary
             self._render_iterable(child.values(), add)
         elif isinstance(child, Spot):
             self._render_spot(child, add)
@@ -168,17 +168,78 @@ class FieldOfView(object):
         self._render_children(self.children.added, add=True)
         self.children.added = set()
 
+    @property
+    def spot_shape(self):
+        sh = self.psf.sigma['px'] * np.array([12, 12])
+        return sh.astype(int)
+
     def add_spot(self, coordinate, A):
         # creates a child Spot instance
-        shape = self.psf.sigma['px'] * np.array([8, 8])
         coordinate.pixelsize = self.pixelsize
-        return Spot(coordinate, self.psf, A, shape, parent=self)
+        return Spot(coordinate, self.psf, A, self.spot_shape, parent=self)
+
+    def get_cropped_roi(self, xy):
+        sh = self.spot_shape
+        imshape = np.array(self.shape)
+        # remove any coördinates close to the edge
+        mask = np.logical_and(sh // 2 < xy, xy < imshape[-2:] - sh // 2)
+        xy = xy[mask.all(1), :][:, None, :]
+        # start and stop indices of crop
+        bounds = xy + np.array([-sh // 2, sh // 2], int)[None, :]
+        im = self.render()
+        data = [im[slice(*x), slice(*y)] for x, y in bounds.swapaxes(1, 2)]
+        return np.dstack(data).T, bounds[:, 0, :]
+
+    @property
+    def camera_metadata(self):
+        nm = self.noise
+        return {'ADOffset': nm.ADOffset, 'TrueEMGain': nm.TrueEMGain,
+                'readoutNoise': nm.readoutNoise,
+                'electronsPerCount': nm.electronsPerCount}
+
+    def save(self, path):
+        with h5py.File(path) as f:
+            im = self.render()
+            im = f.create_dataset('image', data=im)
+            im.attrs['pixelsize'] = self.pixelsize['nm']
+            im.attrs['pixelunit'] = 'nm'
+
+            cam = f.create_group('camera')
+            for k, v in self.camera_metadata.items():
+                _ = cam.create_dataset(k, data=v)
+
+            # turn self.children into an ordered iterable
+            children = list(self.children)
+            # save cropped versions of the spots
+            sp = f.create_group('spots')
+            sp.attrs['pixelsize'] = self.pixelsize['nm']
+            sp.attrs['pixelunit'] = 'nm'
+            centroids = np.array([c.get_global_coordinate()['px']
+                                  for c in children])
+            cropped, topleft = self.get_cropped_roi(centroids.astype(int))
+            sp.create_dataset('image', data=cropped)
+            sp.create_dataset('topleft', data=topleft)
+
+            gt = f.create_group('ground_truth')
+            gt.create_dataset('centroid', dtype=np.float32, data=centroids)
+            A = np.array([c.A for c in children])
+            gt.create_dataset('A', dtype=np.float32, data=A)
+            sigma = self.psf.sigma['px']
+            gt.create_dataset('sigma', dtype=np.float32, data=sigma)
 
 
 class ImageComponent(ABC):
     """
-    coordinate property is center of the object, where (0,0) is the parent
-    object's coordinate.
+    Abstract base class for all simulated objects.
+
+    Parameters
+    -----------
+    coordinate: Coordinate
+    Centroid of the ImageComponent, where (0,0) is the parent object's
+    coordinate.
+
+    parent: FieldOfView, ImageComponent or None
+
     """
     def __init__(self, coordinate, parent):
         super().__init__()

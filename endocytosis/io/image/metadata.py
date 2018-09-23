@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import json
 import numpy as np
+from fijitools.helpers.iteration import isiterable
 
 from endocytosis.helpers.data_structures import YAMLDict
 
@@ -79,19 +80,16 @@ class MetaData(YAMLDict):
     """
     _keys = ['Type', 'FileName', 'DimensionOrder', 'PhysicalSizeX',
              'PhysicalSizeXUnit', 'PhysicalSizeY', 'PhysicalSizeYUnit',
-             'PhysicalSizeZ', 'PhysicalSizeZUnit', 
+             'PhysicalSizeZ', 'PhysicalSizeZUnit',
              'SizeC', 'SizeT', 'SizeX', 'SizeY', 'SizeZ',
              'Creator']
     unit_conversion = {'microns': 'um', 'nanometers': 'nm',
                        'picometers': 'pm', 'µm': 'um', 'um': 'um',
                        'nm': 'nm', 'm': 'm'}
-    type_conversion = {'uint16': np.uint16, 'uint32': np.uint32, 
-                       'float16': np.float16, 'float32': np.float32}
 
     def __init__(self, raw):
         flat = self.__class__.flatten(raw)
         filtered = {k: v for k, v in flat.items() if k in self._keys}
-        filtered['Type'] = self.type_conversion[filtered['Type']]
 
         for key in filtered:
             if key.startswith('PhysicalSize') and key.endswith('Unit'):

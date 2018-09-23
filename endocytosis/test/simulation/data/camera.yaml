@@ -16,7 +16,7 @@ X-7291: !YAMLDict
 ---
 !YAMLCamera
 X-9309: !YAMLDict
-  ADOffset: 400
+  ADOffset: 0
   numGainElements: 592
   quantum_efficiency: 0.87
   serial_number: X-9309

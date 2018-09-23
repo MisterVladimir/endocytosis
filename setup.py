@@ -161,8 +161,7 @@ def create_extension(path_as_list, sources, module_name):
 
 if __name__ == '__main__':
     from setuptools import find_packages
-    kwargs = [{'path_as_list': ['endocytosis', 'segmentation',
-                                'modelbased', 'obj'],
+    kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'obj'],
                'sources': ['cygauss2d.c'],
                'module_name': 'cygauss2d'},
               {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
