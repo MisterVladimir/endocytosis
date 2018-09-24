@@ -359,12 +359,13 @@ class SimpleGaussian2D(object):
     """
     model_function = cygauss2d.model
 
-    def __init__(self, sigma, x, y):
-        self.sigma, self.x, self.y = sigma, np.float32(x), np.float32(y)
+    def __init__(self, sigma):
+        self.sigma = sigma
 
-    def render(self, A, shape):
-        dx, dy = np.array(shape, dtype=np.int16)
+    def render(self, A, x, y, shape):
+        shape = np.array(shape, dtype=np.float32)
         A = np.float32(A)
+        x, y = np.array([x, y]) + shape / 2
         zero = np.float32(0.)
         if len(self.sigma) == 1:
             sigma = np.copy(self.sigma['px'] * np.ones(2, dtype=np.float32))
@@ -373,9 +374,8 @@ class SimpleGaussian2D(object):
         else:
             raise TypeError('sigma must be one- or two-dimensional.')
 
+        dx, dy = np.array(shape, dtype=np.int16)
         X, Y = np.mgrid[:dx, :dy]
-        x = dx // np.float32(2.) + self.x
-        y = dy // np.float32(2.) + self.y
         return self.model_function(A, sigma, x, y,
                                    zero, zero, zero, X, Y)
 

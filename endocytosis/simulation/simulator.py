@@ -22,6 +22,7 @@ from abc import abstractmethod
 import numpy as np
 import h5py
 import os
+import random
 from fijitools.helpers.decorators import methdispatch
 from fijitools.helpers.coordinate import Coordinate
 
@@ -51,9 +52,17 @@ class RandomSimulator(IO):
     @set_fov.register(FieldOfView)
     def _set_fov(self, fov):
         self._fov = fov
+        self.imshape = self._fov.shape
+        self.pixelsize = self._fov.pixelsize
+        self.psf = self._fov.psf
+        self.noise = self._fov.noise
 
     def _set_fov_from_args(self, shape, pixelsize, psfmodel, noise_model):
         self._fov = FieldOfView(shape, pixelsize, psfmodel, noise_model)
+        self.imshape = self._fov.shape
+        self.pixelsize = self._fov.pixelsize
+        self.psf = self._fov.psf
+        self.noise = self._fov.noise
 
     @set_fov.register(tuple)
     def _set_fov(self, shape, pixelsize, psfmodel, noise_model):
@@ -67,21 +76,41 @@ class RandomSimulator(IO):
     def _set_fov(self, shape, pixelsize, psfmodel, noise_model):
         self._set_fov_from_args(shape, pixelsize, psfmodel, noise_model)
 
-    @abstractmethod
-    def _render(self, *args, **kwargs):
-        raise NotImplementedError('Implement in child classes.')
+    # @abstractmethod
+    # def _render(self, *args, **kwargs):
+    #     raise NotImplementedError('Implement in child classes.')
 
-    def render(self, nT, n_spots, A):
+    def random_coord_generator(self):
+        x, y = self.imshape
+        while True:
+            _x = random.uniform(0, x)
+            _y = random.uniform(0, y)
+            px = np.array([_x, _y])
+            yield Coordinate(**{'px': px, 'nm': px*self.pixelsize['nm']})
+
+    def render(self, t):
+        return self.h5file['image'][t]
+
+    def centroids(self, t):
+        return self.h5file['ground_truth']['centroid'][str(t)].value
+
+    def save(self, nT, n_spots, A):
         """
+        nT: int
+        Number of images to simulate.
+
         n_spots: tuple, list or np.ndarray
-        (min, max) number of spots per image.
+        (min, max) number of spots per image. The actual number of spots in a
+        given image is a uniform distribution in this range.
 
         A: generator
-        Generates A parameter for each Spot.
+        Generates A parameter for each Spot. It's best to make this an infinite
+        generator, but at minimum, it should produce as many spots as there
+        will be in the entire dataset.
         """
         imdset = self.h5file.create_dataset('image',
-                                            (nT, *self._fov.shape),
-                                            float)
+                                            (nT, *self.imshape),
+                                            np.float32)
         imdset.attrs['pixelsize'] = self._fov.pixelsize['nm']
         imdset.attrs['pixelunit'] = 'nm'
         imdset.attrs['DimensionOrder'] = 'TXY'
@@ -91,16 +120,20 @@ class RandomSimulator(IO):
             _ = cam.create_dataset(k, data=v)
 
         n = np.random.randint(*n_spots, size=nT)
-        crds = iter(np.random.rand(np.sum(n), 2)*self._fov.shape)
-        coords = [[Coordinate(**{'nm': next(crds)}) for _ in range(_n)]
-                  for _n in n]
+        cgen = self.random_coord_generator()
+        cords = [[next(cgen) for _ in range(_n)] for _n in n]
         grnd = self.h5file.create_group('ground_truth')
         centroid = grnd.create_group('centroid')
         for t in range(nT):
-            centroid.create_dataset(
-                str(t), float, np.array([c['px'] for c in coords[t]]))
+            centroid.create_dataset(str(t), dtype=np.float32,
+                                    data=np.array([c['px'] for c in cords[t]]))
+            # this is faster than self._fov.add_spot
             self._fov.children = \
-                TrackedSet((Spot(c, self._fov.psf, next(A),
-                                 self._fov.spot_shape) for c in coords[t]))
+                TrackedSet([Spot(c, self._fov.psf, next(A),
+                                 self._fov.spot_shape,
+                                 parent=self._fov)
+                            for c in cords[t]])
+
             imdset[t, :, :] = self._fov.render()
             self._fov.children = TrackedSet()
+            self._fov._data = np.zeros_like(self._fov._data)

@@ -24,6 +24,7 @@ import h5py
 import weakref
 import os
 import numbers
+import random
 
 from fijitools.helpers.coordinate import Coordinate
 from fijitools.helpers.iteration import isiterable
@@ -109,12 +110,13 @@ class FieldOfView(object):
             Shape of rendered item in pixels.
         """
         # pixel coordinate of object center
-        px = np.rint(coordinate['px']).astype(int)
+        px = np.floor(coordinate['px']).astype(np.int16)
         # how to slice into self._data
-        # sldata and slobj are: [[x0, y0], 
+        # sldata and slobj are: [[x0, y0],
         #                        [x1, y1]]
-        sldata = px[None, ...] + np.array([-shape // 2, shape // 2], int)
-        slobj = np.zeros((2, 2), int)
+        sldata = px[None, :] + np.ceil([-shape/2, shape/2]).astype(np.int16)
+        sldata = sldata.astype(np.int16)
+        slobj = np.zeros((2, 2), dtype=np.int16)
 
         slobj[0] = np.where(sldata[0] < 0, -sldata[0], 0)
         slobj[1] = np.where(sldata[1] > self._data.shape,
@@ -146,8 +148,8 @@ class FieldOfView(object):
         print('rendering a cell')
 
     def _render_spot(self, spot, add):
-        sldata, slspot = self._get_slice(spot.get_global_coordinate(),
-                                         spot.shape)
+        gc = spot.get_global_coordinate()
+        sldata, slspot = self._get_slice(gc, spot.shape)
 
         arr = spot.render()
         if add:
@@ -179,13 +181,14 @@ class FieldOfView(object):
         return Spot(coordinate, self.psf, A, self.spot_shape, parent=self)
 
     def get_cropped_roi(self, xy):
-        sh = self.spot_shape
+        sshape = self.spot_shape
         imshape = np.array(self.shape)
         # remove any coördinates close to the edge
-        mask = np.logical_and(sh // 2 < xy, xy < imshape[-2:] - sh // 2)
+        mask = np.logical_and(sshape / 2 < xy, xy < imshape[-2:] - sshape / 2)
         xy = xy[mask.all(1), :][:, None, :]
         # start and stop indices of crop
-        bounds = xy + np.array([-sh // 2, sh // 2], int)[None, :]
+        bounds = xy + np.ceil([-sshape // 2, sshape // 2])[None, :]
+        bounds = bounds.astype(int) + 1
         im = self.render()
         data = [im[slice(*x), slice(*y)] for x, y in bounds.swapaxes(1, 2)]
         return np.dstack(data).T, bounds[:, 0, :]
@@ -216,7 +219,7 @@ class FieldOfView(object):
             sp.attrs['pixelunit'] = 'nm'
             centroids = np.array([c.get_global_coordinate()['px']
                                   for c in children])
-            cropped, topleft = self.get_cropped_roi(centroids.astype(int))
+            cropped, topleft = self.get_cropped_roi(centroids)
             sp.create_dataset('image', data=cropped)
             sp.create_dataset('topleft', data=topleft)
 
@@ -326,14 +329,16 @@ class Spot(ImageComponent):
         super().__init__(coordinate, parent)
         self.psf = psfmodel
         self.A = A
-        self.shape = np.array(shape)
+        self.shape = np.array(shape, dtype=np.int16)
         self.noise = noise_model
 
     def __str__(self):
         return 'Spot @ {}nm.'.format(", ".join(self.coordinate['nm']))
 
     def _render(self):
-        return self.psf.render(self.A, self.shape)
+        px = self.coordinate['px']
+        x, y = px - np.floor(px)
+        return self.psf.render(self.A, x, y, self.shape)
 
 
 # placeholder
