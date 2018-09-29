@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from ruamel import yaml
 
-from ..helpers.data_structures import YAMLDict
+from .util import YAMLDict
 
 
 class YAMLCameraSpec(YAMLDict):
@@ -91,7 +91,7 @@ class YAMLCamera(YAMLDict):
         self[self.serial_number]['specs'] = specs
 
 
-def make_YAML(typ='safe'):
+def _make_YAML(typ='safe'):
     y = yaml.YAML(typ=typ)
     for c in (YAMLCamera, YAMLCameraSpec, YAMLDict):
         y.register_class(c)
@@ -102,17 +102,25 @@ def load_camera_yaml(path, serial_number):
     """
     Load EMCCD camera metadata from a YAML file.
     """
-    y = make_YAML()
+    y = _make_YAML()
     with open(path, 'r') as f:
+        # y.load_all returns a generator that yields yaml documents
+        # each document contains a camera's metadata as a YAMLDict
+        # (a nested dictionary) whose root node's key is the camera's
+        # serial number
         for item in y.load_all(f):
             if serial_number in item:
                 return item[serial_number]
-
-    raise IOError("Serial number {} was not found.".format(serial_number))
+        else:
+            # raise an error if we've iterated through all the cameras, and
+            # haven't found the camera specified by the serial_number
+            # parameter
+            raise IOError("Serial number {} was not found.".format(
+                serial_number))
 
 
 def dump_camera_yaml(path, cameras):
-    y = make_YAML()
+    y = _make_YAML()
     cameras = [cameras]
     with open(path, 'w') as f:
         y.dump_all(cameras, f)

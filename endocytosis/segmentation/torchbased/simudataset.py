@@ -26,39 +26,18 @@ from scipy import sparse
 import h5py
 import os
 import string
-from fiji_tools.io import IO
 
-from endocytosis.io.path import PathFinder
-
-"""
-Notes to self
-Despite all ROI having same square size, we'll probably still need to
-train height and width of each anchor's bounding box to account for movement
-of spots from one 'channel' (timepoint) to the next.
-
-Instead of classifying into simply 'background' and 'foreground', we might
-classify anchors as 'background', 'start', 'middle', and 'end', the latter
-three corresponding to their () during the endocytosis event. Each of these
-should have very characteristic appearances although it's unclear whether
-the Endocytosis dataset actually identifies the faint GFP signal at the
-very early and late stages. I hope this will ultimately help link ROI
-over the timecourse.
-"""
+from ...io import IO
+from ...config.cfg import 
 
 
-class EndocytosisDataset(Dataset, IO):
+class SimulatedDataset(Dataset, IO):
     """
-    For loading the Endocytosis dataset.
-    ********************************************************************
-    ********************************************************************
-
     Parameters
     -----------
     source: hdf5 File or Group
-    hyp: addict.Dict
-    Hyperparameters. 
     """
-    def __init__(self, source, hyp):
+    def __init__(self, source):
         super().__init__()
         self.source = source
         # hyperparameters

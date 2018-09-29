@@ -19,11 +19,10 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-from addict import Dict
 from ruamel import yaml
 import os
 
-from ..helpers.data_structures import YAMLDict
+from ..io.yaml.util import YAMLDict
 
 
 def load_config(filename):
@@ -33,6 +32,3 @@ def load_config(filename):
     with open(filename, 'r') as f:
         cfg_from_yaml = y.load(f)
     return cfg_from_yaml
-
-path = os.path.join(os.path.dirname(__file__), 'config.yaml')
-CONFIG = load_config(path)

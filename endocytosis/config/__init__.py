@@ -18,16 +18,12 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-from ruamel import yaml
+import os
 
+from .load import load_config
 
-class MyYAML(yaml.YAML):
-    # copied from ruamel.yaml docs
-    def dump(self, data, stream=None, **kw):
-        inefficient = False
-        if stream is None:
-            inefficient = True
-            stream = yaml.compat.StringIO()
-        super().dump(data, stream, **kw)
-        if inefficient:
-            return stream.getvalue()
+folder = os.path.dirname(__file__)
+path = os.path.join(folder, 'config.yaml')
+CONFIG = load_config(path)
+
+__all__ = ['CONFIG', ]

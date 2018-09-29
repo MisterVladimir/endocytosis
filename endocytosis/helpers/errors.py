@@ -18,6 +18,16 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
+from contextlib import contextmanager
+
+
+@contextmanager
+def ignored(*exceptions):
+    # https://youtu.be/OSGv2VnC0go?t=43m20s
+    try:
+        yield
+    except exceptions:
+        pass
 
 
 # copied from https://docs.python.org/3.6/tutorial/errors.html

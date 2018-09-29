@@ -95,29 +95,6 @@ class IndexedDict(dict):
                 return method(keys, value)
 
 
-class YAMLDict(Dict):
-    yaml_tag = '!YAMLDict'
-
-    @classmethod
-    def dump(cls, representer, data):
-        # implement subclass-specific serializing/dumping method here
-        return representer.represent_mapping(cls.yaml_tag, data)
-
-    @classmethod
-    def to_yaml(cls, representer, data):
-        return cls.dump(representer, data)
-
-    @classmethod
-    def load(cls, constructor, node):
-        # implement subclass-specific loading method here
-        constructor.flatten_mapping(node)
-        return cls(constructor.construct_mapping(node, deep=True))
-
-    @classmethod
-    def from_yaml(cls, constructor, node):
-        return cls.load(constructor, node)
-
-
 class TrackedSet(set):
     """
     Set that keeps track of items added and removed.

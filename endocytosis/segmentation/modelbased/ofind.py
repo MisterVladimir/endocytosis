@@ -41,6 +41,7 @@ class ObjectIdentifier(_ofind.ObjectIdentifier):
                          filterRadiusHighpass=3, filterRadiusZ=4)
 
     def _get_cropped_roi(self, x, y, size):
+        # XXX: should probably copy from simulation.image_components.FieldOfView
         n = len(x)
         # xy coördinates as n by 2 array
         xy = np.array([x, y], int).T

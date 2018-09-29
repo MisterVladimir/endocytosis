@@ -184,7 +184,8 @@ class FieldOfView(object):
         sshape = self.spot_shape
         imshape = np.array(self.shape)
         # remove any coördinates close to the edge
-        mask = np.logical_and(sshape / 2 < xy, xy < imshape[-2:] - sshape / 2)
+        mask = np.logical_and(1 + sshape / 2 < xy,
+                              xy < 1 + imshape[-2:] - sshape / 2)
         xy = xy[mask.all(1), :][:, None, :]
         # start and stop indices of crop
         bounds = xy + np.ceil([-sshape // 2, sshape // 2])[None, :]

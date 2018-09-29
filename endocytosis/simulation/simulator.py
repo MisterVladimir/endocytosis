@@ -127,7 +127,9 @@ class RandomSimulator(IO):
         for t in range(nT):
             centroid.create_dataset(str(t), dtype=np.float32,
                                     data=np.array([c['px'] for c in cords[t]]))
-            # this is faster than self._fov.add_spot
+            # this is a hacky but it's much faster than executing multiple
+            # self._fov.add_spot methods because it adds all spots at once,
+            # and...
             self._fov.children = \
                 TrackedSet([Spot(c, self._fov.psf, next(A),
                                  self._fov.spot_shape,
@@ -135,5 +137,8 @@ class RandomSimulator(IO):
                             for c in cords[t]])
 
             imdset[t, :, :] = self._fov.render()
+            # ...clear all spots from a FieldOfView at once by zero-ing out
+            # the _data of FieldOfView instead of subtracting each spot's
+            # image one at a time.
             self._fov.children = TrackedSet()
-            self._fov._data = np.zeros_like(self._fov._data)
+            self._fov._data = np.float32(0.)

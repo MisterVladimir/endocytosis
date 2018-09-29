@@ -3,7 +3,8 @@
 *.tif 
 *.h5 
 *.nd2 
-*.ijm 
+*.ijm
+VS_201*
 
 # .gitignore file 
 .gitignore
