@@ -124,6 +124,8 @@ class RandomSimulator(IO):
         cords = [[next(cgen) for _ in range(_n)] for _n in n]
         grnd = self.h5file.create_group('ground_truth')
         centroid = grnd.create_group('centroid')
+        means = []
+        variances = []
         for t in range(nT):
             centroid.create_dataset(str(t), dtype=np.float32,
                                     data=np.array([c['px'] for c in cords[t]]))
@@ -136,9 +138,14 @@ class RandomSimulator(IO):
                                  parent=self._fov)
                             for c in cords[t]])
 
-            imdset[t, :, :] = self._fov.render()
+            imdata = self._fov.render()
+            imdset[t, :, :] = imdata
+            means.append(imdata.mean())
+            variances.append(imdata.var())
             # ...clear all spots from a FieldOfView at once by zero-ing out
             # the _data of FieldOfView instead of subtracting each spot's
             # image one at a time.
             self._fov.children = TrackedSet()
             self._fov._data = np.float32(0.)
+        imdset.attrs['mean'] = np.mean(means)
+        imdset.attrs['std'] = np.sqrt(np.mean(variances))

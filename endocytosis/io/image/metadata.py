@@ -75,14 +75,16 @@ class MetaData(YAMLDict):
 
     Parameters
     ------------
-    data: raw
+    data: 
     Metadata in the format stored by tifffile.TiffFile.
     """
+    # metadata we need to keep
     _keys = ['Type', 'FileName', 'DimensionOrder', 'PhysicalSizeX',
              'PhysicalSizeXUnit', 'PhysicalSizeY', 'PhysicalSizeYUnit',
              'PhysicalSizeZ', 'PhysicalSizeZUnit',
              'SizeC', 'SizeT', 'SizeX', 'SizeY', 'SizeZ',
              'Creator']
+    # rename units of measure
     unit_conversion = {'microns': 'um', 'nanometers': 'nm',
                        'picometers': 'pm', 'µm': 'um', 'um': 'um',
                        'nm': 'nm', 'm': 'm'}
