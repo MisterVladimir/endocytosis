@@ -18,7 +18,7 @@ TRAIN: !YAMLDict
       weight_decay: 0
       nesterov: False
   BATCH_SIZE: 4
-  BOTTOM_OUT_PLANES: 64
+  BOTTOM_OUT_PLANES: 256
   SIMULATED: !YAMLDict
     ROI_ATTRIBUTE_NAME: centroid
     RANDOM_CROP: False

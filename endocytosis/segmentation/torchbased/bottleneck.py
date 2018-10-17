@@ -37,9 +37,9 @@ class _MiniBlockBase(nn.Module):
     """
     def __init__(self, inplanes, outplanes, relu, kernel_size,
                  stride, padding):
-
         super().__init__()
-
+        args = [inplanes, outplanes, kernel_size, stride, padding]
+        outplanes = int(outplanes)
         self.bn = nn.BatchNorm2d(outplanes)
         if relu:
             self.relu = nn.ReLU(inplace=True)
@@ -52,8 +52,6 @@ class _MiniBlockBase(nn.Module):
         self.stride = stride
         self.padding = padding
         self.bias = False
-
-        self.initialize()
 
     def initialize(self):
         # initialize weights
@@ -103,6 +101,8 @@ class ConvMiniBlock(_MiniBlockBase):
             inplanes, outplanes, kernel_size=kernel_size, stride=stride,
             padding=padding, bias=False, **kwargs)
 
+        self.initialize()
+
 
 class TransposeConvMiniBlock(_MiniBlockBase):
     def __init__(self, inplanes, outplanes, relu=False, kernel_size=1,
@@ -113,6 +113,8 @@ class TransposeConvMiniBlock(_MiniBlockBase):
         self.conv = nn.ConvTranspose2d(
             inplanes, outplanes, kernel_size=kernel_size, stride=stride,
             padding=padding, bias=False, **kwargs)
+
+        self.initialize()
 
 
 class _BottleneckBase(nn.Module):
@@ -146,20 +148,22 @@ class _BottleneckBase(nn.Module):
             stride=1, padding=0)
 
     def _get_parameters(self, sampler, **kwargs):
-        self.sampler = sampler
         # default arguments
         _kwargs = {'inplanes': None, 'outplanes': None,
                    'kernel_size': 1, 'stride': 1, 'padding': 0}
 
         if sampler:
-            _kwargs = {k: getattr(sampler, k) for k in kwargs}
+            _kwargs = {k: getattr(sampler, k) for k in _kwargs}
+            print(_kwargs)
         else:
-            _kwargs.update(**kwargs)
+            _kwargs.update(kwargs)
             if _kwargs['outplanes'] is None:
-                _kwargs.update(('outplanes', kwargs['inplanes']))
+                _kwargs.update({'outplanes': kwargs['inplanes']})
 
         innerplanes = _kwargs['outplanes'] // self.expansion
-        _kwargs.update(('innerplanes', innerplanes))
+        _kwargs.update({'innerplanes': innerplanes})
+
+        print(_kwargs)
 
         return _kwargs
 
@@ -184,6 +188,7 @@ class DownBottleneck(_BottleneckBase):
         kwargs = self._get_parameters(sampler, inplanes=inplanes,
                                       outplanes=outplanes, **kwargs)
         super().__init__(kwargs['innerplanes'], kwargs['outplanes'])
+        self.sampler = sampler
 
         # relu=True, i.e. add ReLU layer
         self.subblock1 = ConvMiniBlock(
@@ -203,10 +208,11 @@ class UpBottleneck(_BottleneckBase):
         kwargs = self._get_parameters(sampler, inplanes=inplanes,
                                       outplanes=outplanes, **kwargs)
         super().__init__(kwargs['innerplanes'], kwargs['outplanes'])
+        self.sampler = sampler
 
         # relu=True, i.e. add ReLU layer
         self.subblock1 = TransposeConvMiniBlock(
-            kwargs['inplanes'], kwargs['innerplanes'], True, 
+            kwargs['inplanes'], kwargs['innerplanes'], True,
             kwargs['kernel_size'], kwargs['stride'], kwargs['padding'])
 
     @classmethod

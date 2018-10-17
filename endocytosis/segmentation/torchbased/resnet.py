@@ -37,6 +37,7 @@ class ResNetBottom(nn.Module):
     """
     def __init__(self, inplanes=1, outplanes=128):
         super().__init__()
+        self.outplanes = outplanes
         self.block1 = ConvMiniBlock(inplanes, outplanes, relu=True,
                                     kernel_size=7, stride=2, padding=3)
 
@@ -58,37 +59,45 @@ class ResNetMiddle(nn.Module):
     """
     def __init__(self, block, nlayers, inplanes, stride, multiplier=2):
         super().__init__()
+        print('ResNetMiddle')
         # inplanes = CONFIG.TRAIN.INITIAL_PLANES
         # multiplier = CONFIG.TRAIN.DEPTH_MULTIPLIER
         self.outplanes = inplanes
         if not np.iterable(multiplier):
             multiplier = [multiplier**i for i in len(nlayers)]
 
+        print('making layer 1')
+        print("inplanes: {}\nnlayers: {}\nstride: {}".format(inplanes, nlayers, stride))
         self.layer1 = self._make_layer(
-            block, inplanes, nlayers[0], stride=stride[0])
+            block, int(inplanes * multiplier[0]), nlayers[0], stride=stride[0])
+        print('making layer 2')
         self.layer2 = self._make_layer(
-            block, inplanes * multiplier[1], nlayers[1], stride=stride[1])
+            block, int(inplanes * multiplier[1]), nlayers[1], stride=stride[1])
+        print('making layer 3')
         self.layer3 = self._make_layer(
-            block, inplanes * multiplier[2], nlayers[2], stride=stride[2])
+            block, int(inplanes * multiplier[2]), nlayers[2], stride=stride[2])
         if len(nlayers) > 3:
+            print('making layer 4')
             self.layer4 = self._make_layer(
-                block, inplanes * multiplier[3], nlayers[3], stride=stride[3])
+                block, int(inplanes * multiplier[3]), nlayers[3], stride=stride[3])
 
     def _make_layer(self, block, inplanes, nblocks, kernel_size=3,
                     stride=1, padding=1):
         layers = []
 
         if stride > 1 or not self.outplanes == inplanes:
+            print('making sampler')
             ds = block.make_sampler(
                 self.outplanes, inplanes, kernel_size, stride, padding)
             layers.append(block(sampler=ds))
             nblocks -= 1
 
         self.outplanes = inplanes
+        print('making layer')
         for _ in range(nblocks):
             layers.append(block(
-                inplanes=self.outplanes, kernel_size=kernel_size,
-                stride=stride, padding=padding))
+                inplanes=self.outplanes, kernel_size=1,
+                stride=1, padding=0))
 
         return nn.Sequential(*layers)
 

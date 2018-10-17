@@ -33,7 +33,6 @@ class SimulatedModel(nn.Module):
         super().__init__()
         self._setup_bottom()
         self._setup_middle(resnet_model)
-        self._setup_loss()
 
     def _setup_bottom(self):
         outplanes = CONFIG.TRAIN.BOTTOM_OUT_PLANES
@@ -46,18 +45,24 @@ class SimulatedModel(nn.Module):
         self.bottom = resnet.ResNetBottom(nchannels, outplanes)
 
     def _setup_middle(self, model):
-        downlayers = CONFIG.TRAIN.RESNET[model]['DOWNLAYERS']
-        uplayers = CONFIG.TRAIN.RESNET[model]['UPLAYERS']
-
-        stride = CONFIG.TRAIN.RESNET.STRIDE
-        inplanes = CONFIG.TRAIN.BOTTOM_OUT_PLANES
-
+        # block, nlayers, inplanes, stride, multiplier=2
+        down = CONFIG.TRAIN.RESNET[model]['DOWN']
+        downlayers = down.LAYERS
+        downstride = down.STRIDE
+        downmult = down.MULTIPLIER
+        inplanes = self.bottom.outplanes
         self.down = resnet.ResNetMiddle(
-            DownBottleneck, downlayers, inplanes, 2, stride)
+            block=DownBottleneck, nlayers=downlayers, inplanes=inplanes,
+            stride=downstride, multiplier=downmult)
 
+        up = CONFIG.TRAIN.RESNET[model]['UP']
+        uplayers = up.LAYERS
+        upstride = up.STRIDE
+        upmult = up.MULTIPLIER
         inplanes = self.down.outplanes
         self.up = resnet.ResNetMiddle(
-            UpBottleneck, uplayers, inplanes, 0.5, stride)
+            block=UpBottleneck, nlayers=uplayers, inplanes=inplanes,
+            stride=upstride, multiplier=upmult)
 
         self.outplanes = self.up.outplanes
 

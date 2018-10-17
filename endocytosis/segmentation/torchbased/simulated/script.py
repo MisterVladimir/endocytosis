@@ -39,7 +39,7 @@ def get_optim_params(optimizer):
 
 def main(datapath, outpath, train, nepochs, cuda=False):
     dset = SimulatedDataset(datapath, train)
-    batch_size = 4
+    batch_size = CONFIG.TRAIN.BATCH_SIZE
     loader = DataLoader(dset, batch_size)
     if train:
         model = SimulatedModel('resnet50')
