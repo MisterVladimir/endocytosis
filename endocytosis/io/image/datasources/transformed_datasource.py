@@ -55,8 +55,9 @@ class TransformedDatasource(NestedDatasource):
             max_start = im.shape - self.random_crop
             x0, y0 = [random.randint(0, i) for i in max_start]
             x1, y1 = [x0, y0] + self.random_crop
-            im = im[x0:x1, y0:y1]
+            im = im[:, x0:x1, y0:y1]
 
+        output_size = [im.shape[0]] + list(self.output_size)
         if not self.output_size == 'same':
-            im = cv.resize(im, self.output_size, interpolation=cv.INTER_CUBIC)
+            im = cv.resize(im, output_size, interpolation=cv.INTER_CUBIC)
         return im

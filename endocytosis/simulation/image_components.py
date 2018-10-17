@@ -45,7 +45,7 @@ class FieldOfView(object):
     noise_model: noise.NoiseModel
     """
     def __init__(self, shape, pixelsize, psfmodel, noise_model=None):
-        self.shape = shape
+        self.shape = np.array(shape, dtype=np.uint16)
         self._data = np.zeros(shape, dtype=np.float32)
         self.X, self.Y = np.mgrid[:shape[0], :shape[1]]
         self._max_X, self._max_Y = self.X[-1, -1], self.Y[-1, -1]
@@ -115,15 +115,14 @@ class FieldOfView(object):
         # sldata and slobj are: [[x0, y0],
         #                        [x1, y1]]
         sldata = px[None, :] + np.ceil([-shape/2, shape/2]).astype(np.int16)
-        sldata = sldata.astype(np.int16)
         slobj = np.zeros((2, 2), dtype=np.int16)
 
         slobj[0] = np.where(sldata[0] < 0, -sldata[0], 0)
-        slobj[1] = np.where(sldata[1] > self._data.shape,
-                            self._data.shape - sldata[1], shape)
+        slobj[1] = np.where(sldata[1] > self.shape,
+                            self.shape - sldata[1], shape)
 
         sldata[0] = np.maximum(sldata[0], 0)
-        sldata[1] = np.minimum(sldata[1], self._data.shape)
+        sldata[1] = np.minimum(sldata[1], self.shape)
 
         sldata = tuple([slice(start, stop) for start, stop in sldata.T])
         slobj = tuple([slice(start, stop) for start, stop in slobj.T])
@@ -150,7 +149,6 @@ class FieldOfView(object):
     def _render_spot(self, spot, add):
         gc = spot.get_global_coordinate()
         sldata, slspot = self._get_slice(gc, spot.shape)
-
         arr = spot.render()
         if add:
             self._data[sldata] += arr[slspot]

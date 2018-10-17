@@ -23,7 +23,7 @@ from collections import OrderedDict
 from abc import abstractmethod
 from fijitools.helpers.iteration import isiterable
 
-from endocytosis.helpers.data_structures import IndexedDict
+from ....helpers.data_structures import IndexedDict
 from ... import IO
 
 

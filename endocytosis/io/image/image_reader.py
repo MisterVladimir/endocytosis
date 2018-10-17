@@ -20,8 +20,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
 
-from endocytosis.io import IO
-from endocytosis.io.image import metadata
+from .. import IO
+from . import metadata
 
 
 class ImageReader(IO):
@@ -44,15 +44,13 @@ class ImageReader(IO):
     def _load_tif(self, path):
         from endocytosis.contrib.gohlke import tifffile
         from endocytosis.io.image.datasources import tiff_datasource
-        # placeholder for more sophisticated metadata extraction
         with tifffile.TiffFile(path) as tif:
+            # get metadata using tifffile
+            self.is_imagej = tif.is_imagej
+            self.is_ome = tif.is_ome
             if tif.is_imagej and not tif.is_ome:
-                self.is_imagej = tif.is_imagej
-                self.is_ome = False
                 self.metadata = metadata.MetaData(tif.imagej_metadata)
             elif tif.is_ome:
-                self.is_imagej = tif.is_imagej
-                self.is_ome = True
                 self.metadata = metadata.MetaData(tif.ome_metadata)
             else:
                 raise NotImplementedError('')
@@ -61,7 +59,7 @@ class ImageReader(IO):
                  md['SizeX'], md['SizeY']]
         shape = list(map(int, shape))
         if self.is_imagej and not self.is_ome:
-            # not sure if 'YX' is correct
+            # ImageJ data is always stored in TZCYX (or TZCXY?) order
             request = tiff_datasource.TiffImageRequest('TZCYX', *shape)
         else:
             order = md['DimensionOrder']

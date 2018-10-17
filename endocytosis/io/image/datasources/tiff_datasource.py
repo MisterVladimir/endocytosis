@@ -27,15 +27,18 @@ from .base_datasource import BaseImageRequest, FileDataSource
 
 class TiffImageRequest(BaseImageRequest):
     __doc__ = BaseImageRequest.__doc__
-    module_name = 'tiff_datasource'
 
     def _get_page_indices(self):
+        """
+        Converts data stored as key/value pairs in self to tiff page
+        indices.
+        """
         order = self.ctz_order
         # shape of the tif image, in its DimensionOrder
         tif_shape = np.array([self.image_shape[k] for k in order])
 
-        # the requested index, stored as values in self, is rearranged to the
-        # dimension order that the tiff image is in
+        # the requested index, stored as values in self, rearranged to the
+        # DimensionOrder that the tiff image is in
         index = self[order]
         from_ints = np.array([0 if isinstance(i, slice) else i
                               for i in index])[:, None]
@@ -73,7 +76,6 @@ class TiffImageRequest(BaseImageRequest):
     def __call__(self, *ctzxy):
         # keep an old copy to roll back in case of errors
         old_indices = copy.copy(self['CTZXY'])
-        # cache the index
         if len(ctzxy) == 5:
             self['CTZXY'] = ctzxy
         elif len(ctzxy) == 3:

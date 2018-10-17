@@ -53,6 +53,18 @@ class _MiniBlockBase(nn.Module):
         self.padding = padding
         self.bias = False
 
+        self.initialize()
+
+    def initialize(self):
+        # initialize weights
+        for m in self.modules():
+            if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, np.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+
     @classmethod
     def calculate_padding(cls, shape, kernel_size, stride):
         # get padding such that
@@ -179,11 +191,11 @@ class DownBottleneck(_BottleneckBase):
             kwargs['kernel_size'], kwargs['stride'], kwargs['padding'])
 
     @classmethod
-    def make_sampler(cls, inplanes, outplanes, kernel_size, stride, padding):
+    def make_sampler(cls, inplanes, outplanes, kernel_size=3, stride=2, padding=1):
         # kernel_size = 1
         # relu = False
         return ConvMiniBlock(
-            inplanes, outplanes, False, kernel_size, stride, padding=0)
+            inplanes, outplanes, False, kernel_size, stride, padding=padding)
 
 
 class UpBottleneck(_BottleneckBase):
@@ -198,6 +210,6 @@ class UpBottleneck(_BottleneckBase):
             kwargs['kernel_size'], kwargs['stride'], kwargs['padding'])
 
     @classmethod
-    def make_sampler(cls, inplanes, outplanes, kernel_size, stride, padding):
+    def make_sampler(cls, inplanes, outplanes, kernel_size=3, stride=2, padding=1):
         return TransposeConvMiniBlock(
             inplanes, outplanes, False, kernel_size, stride, padding)

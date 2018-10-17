@@ -24,6 +24,7 @@ from endocytosis.io.image.datasources import NestedDatasource
 from endocytosis.helpers.errors import DatasourceError
 
 
+# not tested
 class BufferedDatasource(NestedDatasource):
     """
     """

@@ -22,7 +22,7 @@ import copy
 import numpy as np
 
 from ..contrib.PYME.Acquire.Hardware.Simulator import fakeCam
-from ..config.camera import load_camera_yaml
+from ..io.yaml.camera import load_camera_yaml
 
 
 class NoiseModel(object):

@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
+import torch
 from torch.utils.data import (Dataset, ConcatDataset, DataLoader)
 from torch import from_numpy
 from addict import Dict
@@ -26,31 +27,27 @@ from scipy import sparse
 import h5py
 import os
 import string
+import numbers
 
-from ...io import IO
-from ...config import CONFIG
+from ....io import IO
+from ....config import CONFIG
 
 
 class SimulatedDataset(Dataset, IO):
     """
     Parameters
     -----------
-    source: hdf5 File or Group
+    path : str
+        hdf5 file name with full path.
+
+    training : bool
+        True if training, False if making inferences.
     """
-    def __init__(self, path):
+    def __init__(self, path, training):
         super().__init__()
+        self.training = training
         self.h5file = h5py.File(path, 'r')
-        # hyperparameters
-        self.roi_attribute_name = CONFIG.SIMULATED.DATA.ROI_ATTRIBUTE_NAME
-        self.cropped_image_size = CONFIG.SIMULATED.TRAIN.CROPPED_IMAGE_SIZE
-        self.random_crop = CONFIG.SIMULATED.TRAIN.RANDOM_CROP
-        self.normalize_image_data = CONFIG.SIMULATED.TRAIN.NORMALIZE_IMAGE_DATA
-        if self.normalize_image_data:
-            self.image_data_mean = CONFIG.SIMULATED.TRAIN.IMAGE_DATA_MEAN
-            self.image_data_stdev = CONFIG.SIMULATED.TRAIN.IMAGE_DATA_STDEV
-        # self.info.hyp.ROI_SIDE_LENGTH = 11
-        # self.info.hyp.CROPPED_IMAGE_SIZE = 64
-        # self.info.hyp.ROI_ATTRIBUTE_NAME = 'centroid'
+        self._parameter_setup()
         self._data_setup()
 
     @property
@@ -59,18 +56,31 @@ class SimulatedDataset(Dataset, IO):
 
     @cropped_image_size.setter
     def cropped_image_size(self, ciz):
-        if len(ciz) == 2:
-            self._cropped_image_size = np.array([1] + ciz)
+        if isinstance(ciz, numbers.Integral):
+            self._cropped_image_size = np.array([1, ciz, ciz])
+        elif len(ciz) == 2:
+            self._cropped_image_size = np.array([1, *ciz])
         elif len(ciz) == 3:
             self._cropped_image_size = np.array(ciz)
         else:
             raise TypeError('cropped_image_size must be set with list of '
                             'length two or three.')
 
+    def _parameter_setup(self):
+        self.roi_attribute_name = CONFIG.TRAIN.SIMULATED.ROI_ATTRIBUTE_NAME
+        self.cropped_image_size = CONFIG.TRAIN.SIMULATED.CROPPED_IMAGE_SIZE
+        self.random_crop = CONFIG.TRAIN.SIMULATED.RANDOM_CROP
+        self.normalize_image_data = CONFIG.TRAIN.SIMULATED.NORMALIZE_IMAGE_DATA
+        if self.normalize_image_data:
+            self.image_data_mean = CONFIG.TRAIN.SIMULATED.IMAGE_DATA_MEAN
+            self.image_data_stdev = CONFIG.TRAIN.SIMULATED.IMAGE_DATA_STDEV
+
     def _data_setup(self):
         # set image data
-        self.image = self.h5file['image']
-        self.imshape = self.image.shape
+        self.image = self.h5file['image']['data']
+        self.mean = self.h5file['image']['mean']
+        self.stdev = self.h5file['image']['stdev']
+        self.imshape = np.array(self.image.shape, dtype=np.uint16)
 
         if self.random_crop:
             self._random_crop_ind = {}
@@ -89,30 +99,36 @@ class SimulatedDataset(Dataset, IO):
         mask: numpy.ndarray
         Boolean array, denotes whether pixel contains a spot.
 
-        ret: numpy.ndarray
-        XY coördinates of spot centroid relative to the top left corner (0, 0) of
-        the pixel.
+        deltas: numpy.ndarray
+        XY coördinates of spot centroid relative to the top left corner (0, 0)
+        of the pixel.
         """
         im = self.image[t, x, y]
         if self.normalize_image_data:
-            mean = self.image.attrs['mean']
-            stdev = self.image.attrs['std'] / self.image_data_stdev
+            mean = self.mean[t]
+            stdev = self.stdev[t] / self.image_data_stdev
             im = (im - mean) / stdev + self.image_data_mean
-        ret = np.zeros([2] + list(im.shape), dtype=np.float32)
+
+        if not self.training:
+            return from_numpy(im), None, None
+
+        deltas = np.zeros([2, *im.shape[1:]], dtype=np.float32)
         # XY cooridnates from ground truth data
         gt = self.h5file['ground_truth'][self.roi_attribute_name][str(t.start)]
         gt = gt.value
         # filter out any coördinates outside this cropped image
         mask = np.logical_and(gt >= [x.start, y.start], gt < [x.stop, y.stop])
+        mask = mask.all(1)
         if np.any(mask):
             # x coordinates, y coordinates within the cropped image
             xy = gt[mask] - [x.start, y.start]
-            xi, yi = xy.T.astype(int)
-            ret[:, xi, yi] = xy - xy.astype(int)
-            mask = ret[0] > 0
-            out = (im, mask, ret)
+            xyint = xy.astype(int)
+            xi, yi = xyint.T
+            deltas[:, xi, yi] = (xy - xyint).T
+            mask = deltas[0] > 0
+            out = (im, mask.astype(np.float32), deltas)
         else:
-            out = im, np.zeros_like(im, dtype=np.uint8), ret
+            out = im, np.zeros_like(im, dtype=np.float32), deltas
         return (from_numpy(item) for item in out)
 
     def _new_random_crop(self):
@@ -128,11 +144,12 @@ class SimulatedDataset(Dataset, IO):
         t, x, y: slice
         """
         index_shape = self.imshape // self.cropped_image_size
-        unraveled_index = np.unravel_index([index], index_shape)
+        unraveled_index = np.unravel_index(index, index_shape)
+        unraveled_index = np.array(unraveled_index)
         # in case cropped_image_size doesn't divide evenly into imshape
         start = (self.imshape % self.cropped_image_size) // 2
         t0, x0, y0 = start + unraveled_index*self.cropped_image_size
-        t1, x1, y1 = t0, x0, y0 + self.cropped_image_size
+        t1, x1, y1 = start + (unraveled_index + 1)*self.cropped_image_size
         return (slice(t0, t1), slice(x0, x1), slice(y0, y1))
 
     def __getitem__(self, key):
@@ -146,8 +163,15 @@ class SimulatedDataset(Dataset, IO):
         else:
             txy = self._make_orderly_crop(key)
 
-        keys = ('im', 'mask', 'deltas', 't', 'x', 'y')
-        values = self._base_crop(*txy) + (i.start for i in txy)
+        im, mask, deltas = self._base_crop(*txy)
+
+        keys = ('im', 'mask', 'deltas')
+        if self.training:
+            im.has_grad = True
+        else:
+            keys = keys + ('t', 'x', 'y')
+
+        values = (im, mask, deltas) + tuple((i.start for i in txy))
         return dict(zip(keys, values))
 
     def __len__(self):
