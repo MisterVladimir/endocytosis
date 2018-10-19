@@ -27,6 +27,7 @@ import torch
 from torch import nn
 import numpy as np
 from abc import abstractclassmethod
+import copy
 
 from ...config import CONFIG
 
@@ -35,19 +36,18 @@ class _MiniBlockBase(nn.Module):
     """
 
     """
-    def __init__(self, inplanes, outplanes, relu, kernel_size,
+    def __init__(self, inchannels, outchannels, relu, kernel_size,
                  stride, padding):
         super().__init__()
-        args = [inplanes, outplanes, kernel_size, stride, padding]
-        outplanes = int(outplanes)
-        self.bn = nn.BatchNorm2d(outplanes)
+        outchannels = int(outchannels)
+        self.bn = nn.BatchNorm2d(outchannels)
         if relu:
             self.relu = nn.ReLU(inplace=True)
         else:
             self.relu = None
 
-        self.inplanes = inplanes
-        self.outplanes = outplanes
+        self.inchannels = inchannels
+        self.outchannels = outchannels
         self.kernel_size = kernel_size
         self.stride = stride
         self.padding = padding
@@ -79,10 +79,12 @@ class _MiniBlockBase(nn.Module):
             return kernel_size % 2
 
     def forward(self, x):
+        print('start size: {}'.format(x.size()))
         x = self.conv(x)
         x = self.bn(x)
         if self.relu:
             x = self.relu(x)
+        print('end size: {}'.format(x.size()))
         return x
 
 
@@ -92,27 +94,29 @@ class ConvMiniBlock(_MiniBlockBase):
     layer. Also stores information about the convolution's kernel size,
     stride, and padding as instance attributes.
     """
-    def __init__(self, inplanes, outplanes, relu=False, kernel_size=1,
+    def __init__(self, inchannels, outchannels, relu=False, kernel_size=1,
                  stride=1, padding=0, **kwargs):
         super().__init__(
-            inplanes, outplanes, relu, kernel_size, stride, padding)
+            inchannels, outchannels, relu, kernel_size, stride, padding)
 
         self.conv = nn.Conv2d(
-            inplanes, outplanes, kernel_size=kernel_size, stride=stride,
-            padding=padding, bias=False, **kwargs)
+            inchannels, outchannels, kernel_size=kernel_size, stride=stride,
+            padding=padding, bias=False)
 
         self.initialize()
 
 
 class TransposeConvMiniBlock(_MiniBlockBase):
-    def __init__(self, inplanes, outplanes, relu=False, kernel_size=1,
-                 stride=1, padding=0, **kwargs):
+    def __init__(self, inchannels, outchannels, relu, kernel_size,
+                 stride, padding, output_padding, **kwargs):
         super().__init__(
-            inplanes, outplanes, relu, kernel_size, stride, padding)
+            inchannels, outchannels, relu, kernel_size, stride, padding)
+
+        self.output_padding = output_padding
 
         self.conv = nn.ConvTranspose2d(
-            inplanes, outplanes, kernel_size=kernel_size, stride=stride,
-            padding=padding, bias=False, **kwargs)
+            inchannels, outchannels, kernel_size=kernel_size, stride=stride,
+            padding=padding, bias=False, output_padding=output_padding)
 
         self.initialize()
 
@@ -127,41 +131,53 @@ class _BottleneckBase(nn.Module):
 
     Parameters
     ------------
-    innerplanes: int
+    innerchannels: int
     Number of planes expected from subblock1.
 
-    outplanes: int
+    outchannels: int
     Number of planes in the output.
     """
     expansion = 4
+    default_kwargs = {}
+    convblock = None
 
-    def __init__(self, innerplanes, outplanes):
+    def __init__(self, inchannels=None, outchannels=None, sampler=None, **kwargs):
         super().__init__()
+
+        kwargs = self._get_parameters(
+            sampler, inchannels=inchannels, outchannels=outchannels, **kwargs)
+        self.sampler = sampler
+
+        # relu=True, i.e. add ReLU layer
+        self.subblock1 = self.convblock(relu=True, **kwargs)
+
         self.relu = nn.ReLU(inplace=True)
 
+        innerchannels = self.subblock1.outchannels
         self.subblock2 = ConvMiniBlock(
-            innerplanes, innerplanes, relu=True, kernel_size=3, stride=1,
+            innerchannels, innerchannels, relu=True, kernel_size=3, stride=1,
             padding=1)
 
+        outchannels = innerchannels * self.expansion
         self.subblock3 = ConvMiniBlock(
-            innerplanes, outplanes, relu=False, kernel_size=1,
+            innerchannels, outchannels, relu=False, kernel_size=1,
             stride=1, padding=0)
 
     def _get_parameters(self, sampler, **kwargs):
         # default arguments
-        _kwargs = {'inplanes': None, 'outplanes': None,
-                   'kernel_size': 1, 'stride': 1, 'padding': 0}
-
+        _kwargs = copy.deepcopy(self.default_kwargs)
+        # if we're up- or down-sampling the input, get parameters
+        # from the Module performing the up- or down-sampling
         if sampler:
             _kwargs = {k: getattr(sampler, k) for k in _kwargs}
-            print(_kwargs)
+            innerchannels = _kwargs['outchannels'] // self.expansion
+            _kwargs.update({'outchannels': innerchannels})
+        # otherwise, non-default parameters should be provided in kwargs
         else:
             _kwargs.update(kwargs)
-            if _kwargs['outplanes'] is None:
-                _kwargs.update({'outplanes': kwargs['inplanes']})
-
-        innerplanes = _kwargs['outplanes'] // self.expansion
-        _kwargs.update({'innerplanes': innerplanes})
+            if _kwargs['outchannels'] is None:
+                innerchannels = _kwargs['inchannels'] // self.expansion
+                _kwargs.update({'outchannels': innerchannels})
 
         print(_kwargs)
 
@@ -184,38 +200,28 @@ class _BottleneckBase(nn.Module):
 
 
 class DownBottleneck(_BottleneckBase):
-    def __init__(self, inplanes=None, outplanes=None, sampler=None, **kwargs):
-        kwargs = self._get_parameters(sampler, inplanes=inplanes,
-                                      outplanes=outplanes, **kwargs)
-        super().__init__(kwargs['innerplanes'], kwargs['outplanes'])
-        self.sampler = sampler
-
-        # relu=True, i.e. add ReLU layer
-        self.subblock1 = ConvMiniBlock(
-            kwargs['inplanes'], kwargs['innerplanes'], True,
-            kwargs['kernel_size'], kwargs['stride'], kwargs['padding'])
+    default_kwargs = {'inchannels': None, 'outchannels': None,
+                      'kernel_size': 1, 'stride': 1, 'padding': 0}
+    convblock = ConvMiniBlock
 
     @classmethod
-    def make_sampler(cls, inplanes, outplanes, kernel_size=3, stride=2, padding=1):
-        # kernel_size = 1
+    def make_sampler(cls, inchannels, outchannels, kernel_size, stride,
+                     padding, **kwargs):
+
         # relu = False
         return ConvMiniBlock(
-            inplanes, outplanes, False, kernel_size, stride, padding=padding)
+            inchannels, outchannels, False, kernel_size, stride, padding)
 
 
 class UpBottleneck(_BottleneckBase):
-    def __init__(self, inplanes=None, outplanes=None, sampler=None, **kwargs):
-        kwargs = self._get_parameters(sampler, inplanes=inplanes,
-                                      outplanes=outplanes, **kwargs)
-        super().__init__(kwargs['innerplanes'], kwargs['outplanes'])
-        self.sampler = sampler
-
-        # relu=True, i.e. add ReLU layer
-        self.subblock1 = TransposeConvMiniBlock(
-            kwargs['inplanes'], kwargs['innerplanes'], True,
-            kwargs['kernel_size'], kwargs['stride'], kwargs['padding'])
+    default_kwargs = {'inchannels': None, 'outchannels': None, 'kernel_size': 1,
+                      'stride': 1, 'padding': 0, 'output_padding': 0}
+    convblock = TransposeConvMiniBlock
 
     @classmethod
-    def make_sampler(cls, inplanes, outplanes, kernel_size=3, stride=2, padding=1):
+    def make_sampler(cls, inchannels, outchannels, kernel_size, stride,
+                     padding, output_padding, **kwargs):
+
         return TransposeConvMiniBlock(
-            inplanes, outplanes, False, kernel_size, stride, padding)
+            inchannels, outchannels, False, kernel_size,
+            stride, padding, output_padding)

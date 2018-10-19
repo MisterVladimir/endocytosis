@@ -52,9 +52,9 @@ def main(datapath, outpath, train, nepochs, cuda=False):
             if i == nepochs:
                 break
 
-            im = data['im']
+            im, mask, dx, dy = data
             out = model(im)
-            loss = loss_function(out, data['mask'], data['deltas'])
+            loss = loss_function(out, mask, dx, dy)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()

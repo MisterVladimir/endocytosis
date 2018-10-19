@@ -110,25 +110,31 @@ class SimulatedDataset(Dataset, IO):
             im = (im - mean) / stdev + self.image_data_mean
 
         if not self.training:
-            return from_numpy(im), None, None
+            return from_numpy(im), None, None, None
 
-        deltas = np.zeros([2, *im.shape[1:]], dtype=np.float32)
+        deltas = np.zeros([2, *im.squeeze().shape], dtype=np.float32)
         # XY cooridnates from ground truth data
         gt = self.h5file['ground_truth'][self.roi_attribute_name][str(t.start)]
         gt = gt.value
         # filter out any coördinates outside this cropped image
-        mask = np.logical_and(gt >= [x.start, y.start], gt < [x.stop, y.stop])
-        mask = mask.all(1)
-        if np.any(mask):
-            # x coordinates, y coordinates within the cropped image
-            xy = gt[mask] - [x.start, y.start]
+        # cmask = coördinate mask
+        cmask = np.logical_and(gt >= [x.start, y.start], gt < [x.stop, y.stop])
+        cmask = cmask.all(1)
+        if np.any(cmask):
+            # x, y coördinates, with cropped image's top left corner set to [0, 0]
+            xy = gt[cmask] - [x.start, y.start]
             xyint = xy.astype(int)
             xi, yi = xyint.T
             deltas[:, xi, yi] = (xy - xyint).T
-            mask = deltas[0] > 0
-            out = (im, mask.astype(np.float32), deltas)
+            # pixels where a spot centroid is located
+            mask = deltas > 0
+            mask = mask.all(0)[None, :]
+            out = (im, mask.astype(np.float32))
         else:
-            out = im, np.zeros_like(im, dtype=np.float32), deltas
+            out = (im, np.zeros_like(im, dtype=np.float32))
+
+        dx, dy = deltas[:, None, :, :]
+        out += (dx, dy)
         return (from_numpy(item) for item in out)
 
     def _new_random_crop(self):
@@ -163,16 +169,15 @@ class SimulatedDataset(Dataset, IO):
         else:
             txy = self._make_orderly_crop(key)
 
-        im, mask, deltas = self._base_crop(*txy)
+        im, mask, dx, dy = self._base_crop(*txy)
 
-        keys = ('im', 'mask', 'deltas')
+        # keys = ('im', 'mask', 'deltas')
         if self.training:
-            im.has_grad = True
+            im.requires_grad_()
+            return im, mask, dx, dy
         else:
-            keys = keys + ('t', 'x', 'y')
-
-        values = (im, mask, deltas) + tuple((i.start for i in txy))
-        return dict(zip(keys, values))
+            txy = tuple((i.start for i in txy))
+            return (im, *txy)
 
     def __len__(self):
         return np.prod(self.imshape // self.cropped_image_size)

@@ -31,43 +31,33 @@ from .loss import CombinedLoss
 class SimulatedModel(nn.Module):
     def __init__(self, resnet_model):
         super().__init__()
+        self.outchannels = None
         self._setup_bottom()
         self._setup_middle(resnet_model)
 
     def _setup_bottom(self):
-        outplanes = CONFIG.TRAIN.BOTTOM_OUT_PLANES
+        outchannels = CONFIG.TRAIN.BOTTOM_OUT_PLANES
         ciz = CONFIG.SIMULATED.CROPPED_IMAGE_SIZE
         if len(ciz) == 3:
-            nchannels = ciz[0]
+            inchannels = ciz[0]
         else:
-            nchannels = 1
+            inchannels = 1
 
-        self.bottom = resnet.ResNetBottom(nchannels, outplanes)
+        self.bottom = resnet.ResNetBottom(inchannels, outchannels)
+        self.outchannels = self.bottom.outchannels
 
     def _setup_middle(self, model):
-        # block, nlayers, inplanes, stride, multiplier=2
-        down = CONFIG.TRAIN.RESNET[model]['DOWN']
-        downlayers = down.LAYERS
-        downstride = down.STRIDE
-        downmult = down.MULTIPLIER
-        inplanes = self.bottom.outplanes
-        self.down = resnet.ResNetMiddle(
-            block=DownBottleneck, nlayers=downlayers, inplanes=inplanes,
-            stride=downstride, multiplier=downmult)
-
-        up = CONFIG.TRAIN.RESNET[model]['UP']
-        uplayers = up.LAYERS
-        upstride = up.STRIDE
-        upmult = up.MULTIPLIER
-        inplanes = self.down.outplanes
-        self.up = resnet.ResNetMiddle(
-            block=UpBottleneck, nlayers=uplayers, inplanes=inplanes,
-            stride=upstride, multiplier=upmult)
-
-        self.outplanes = self.up.outplanes
+        # block, nlayers, inchannels, stride, multiplier=2
+        down = CONFIG.TRAIN.RESNET[model]['down']
+        up = CONFIG.TRAIN.RESNET[model]['up']
+        inchannels = self.bottom.outchannels
+        self.outchannels, self.middle = resnet.build_resnet_middle(
+            inchannels, down, up)
 
     def forward(self, im):
+        print('imshape: {}'.format(im.size()))
         im = self.bottom(im)
-        im = self.down(im)
-        im = self.up(im)
+        print('imshape: {}'.format(im.size()))
+        im = self.middle(im)
+        print('imshape: {}'.format(im.size()))
         return im

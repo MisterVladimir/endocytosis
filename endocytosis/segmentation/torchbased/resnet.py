@@ -26,6 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import torch
 from torch import nn
 import numpy as np
+from fijitools.helpers.iteration import isiterable
 
 from ...config import CONFIG
 from .bottleneck import (UpBottleneck, DownBottleneck, ConvMiniBlock)
@@ -35,88 +36,154 @@ class ResNetBottom(nn.Module):
     """
     Builds the first block of ResNet.
     """
-    def __init__(self, inplanes=1, outplanes=128):
+    def __init__(self, inchannels=1, outchannels=128):
         super().__init__()
-        self.outplanes = outplanes
-        self.block1 = ConvMiniBlock(inplanes, outplanes, relu=True,
-                                    kernel_size=7, stride=2, padding=3)
+        self.outchannels = outchannels
+        self.block1 = ConvMiniBlock(inchannels, outchannels, relu=True,
+                                    kernel_size=5, stride=2, padding=2)
 
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1,
                                     ceil_mode=True)
 
     def forward(self, x):
         x = self.block1(x)
-        x = self.maxpool(x)
+        # x = self.maxpool(x)
         return x
 
 
-# resnet_to_layers = {50: [3, 4, 6, 3],
-#                     101: [3, 4, 23, 3],
-#                     152: [3, 8, 36, 3]}
-class ResNetMiddle(nn.Module):
-    """
-    Builds the body of ResNet.
-    """
-    def __init__(self, block, nlayers, inplanes, stride, multiplier=2):
+class _ResNetMiddle(nn.Module):
+    def __init__(self, inchannels):
         super().__init__()
-        print('ResNetMiddle')
-        # inplanes = CONFIG.TRAIN.INITIAL_PLANES
-        # multiplier = CONFIG.TRAIN.DEPTH_MULTIPLIER
-        self.outplanes = inplanes
-        if not np.iterable(multiplier):
-            multiplier = [multiplier**i for i in len(nlayers)]
+        self.outchannels = inchannels
+        self.layers = nn.ModuleList()
 
-        print('making layer 1')
-        print("inplanes: {}\nnlayers: {}\nstride: {}".format(inplanes, nlayers, stride))
-        self.layer1 = self._make_layer(
-            block, int(inplanes * multiplier[0]), nlayers[0], stride=stride[0])
-        print('making layer 2')
-        self.layer2 = self._make_layer(
-            block, int(inplanes * multiplier[1]), nlayers[1], stride=stride[1])
-        print('making layer 3')
-        self.layer3 = self._make_layer(
-            block, int(inplanes * multiplier[2]), nlayers[2], stride=stride[2])
-        if len(nlayers) > 3:
-            print('making layer 4')
-            self.layer4 = self._make_layer(
-                block, int(inplanes * multiplier[3]), nlayers[3], stride=stride[3])
+    def add_layer(self, inchannels, nblocks, **kwargs):
+        """
+        Add nblocks number of skip connection mini neural nets.
 
-    def _make_layer(self, block, inplanes, nblocks, kernel_size=3,
-                    stride=1, padding=1):
+        Parameters
+        ------------
+        nchannels : int
+            Number of input channels.
+
+        nblocks : int
+            Number of skip connection blocks in this layer. For example
+            resnet50 has two such blocks in its first layer.
+
+        stride : int
+
+        kwargs
+            Arguments for constructing a convolutional layer. These are fed
+            into the up/downsampler and the first block within this layer.
+            They are:
+
+            kernel_size : int
+            padding : int
+            output_padding : int
+                Note that this parameter is only valid when self.block is a
+                transpose convolution Module.
+        """
+
         layers = []
+        # gotcha: if we set stride as a keyword argument with a default value
+        # of 1, we fail to pass the stride variable along with **kwargs
+        if 'stride' not in kwargs:
+            stride = 1
+        else:
+            stride = kwargs['stride']
 
-        if stride > 1 or not self.outplanes == inplanes:
-            print('making sampler')
-            ds = block.make_sampler(
-                self.outplanes, inplanes, kernel_size, stride, padding)
-            layers.append(block(sampler=ds))
+        if stride > 1 or not self.outchannels == inchannels:
+            ds = self.block.make_sampler(self.outchannels, inchannels, **kwargs)
+            layers.append(self.block(sampler=ds))
             nblocks -= 1
 
-        self.outplanes = inplanes
-        print('making layer')
+        self.outchannels = inchannels
         for _ in range(nblocks):
-            layers.append(block(
-                inplanes=self.outplanes, kernel_size=1,
+            layers.append(self.block(
+                inchannels=self.outchannels, kernel_size=1,
                 stride=1, padding=0))
+        # Add to instance variable only at the end in case error crops up
+        # while instantiating a new self.block object. This way, errors during
+        # for example the above iteration don't leave self.layers dangling with
+        # some intermediate number of blocks.
+        self.layers.extend(layers)
 
-        return nn.Sequential(*layers)
+    def clear_layers(self):
+        self.layers = nn.ModuleList()
 
     def forward(self, x):
-        try:
-            x = self.layer1(x)
-            x = self.layer2(x)
-            x = self.layer3(x)
-            x = self.layer4(x)
-        except AttributeError:
-            return x
-
+        for layer in self.layers:
+            x = layer(x)
         return x
+
+
+class UpResNet(_ResNetMiddle):
+    block = UpBottleneck
+
+
+class DownResNet(_ResNetMiddle):
+    block = DownBottleneck
+
+
+def build_resnet_middle(inchannels, down, up=None):
+    """
+    Build the skip connection layers of ResNet.
+
+    Parameters
+    ------------
+    inchannels : int
+        Number of channels in the input data.
+
+    down : dict
+    up : dict
+        Keyword arguments to the add_layer methods of DownResNet and UpResNet,
+        respectively.
+
+
+    """
+    def filter_dict(dic):
+        """
+        If a value in the dictionary is not iterable, repeat it 'length'
+        times, where 'length' is the minimum length of an iterable in
+        the dictionary's values.
+        """
+        keys = []
+        lengths = []
+        for k, v in dic.items():
+            if isiterable(v):
+                lengths.append(len(v))
+            else:
+                keys.append(k)
+        lengths = min(lengths)
+        for k in keys:
+            dic.update({k: [dic[k]] * lengths})
+        return lengths, dic
+
+    def add_layers(net, dic, length):
+        for i in range(length):
+            kwargs = {k: v[i] for k, v in dic.items()}
+            net.add_layer(**kwargs)
+
+    downlength, down = filter_dict(down)
+    downres = DownResNet(inchannels)
+    print(down)
+    add_layers(downres, down, downlength)
+    result = nn.ModuleList([downres, ])
+    # add layers to upsampling ResNet
+    if up:
+        upres = UpResNet(downres.outchannels)
+        uplength, down = filter_dict(up)
+        add_layers(upres, up, uplength)
+        result.append(upres)
+
+    outchannels = result[-1].outchannels
+    return outchannels, nn.Sequential(*result)
 
 
 class ResNetTop(nn.Module):
-    def __init__(self, inplanes):
+    def __init__(self, inchannels):
         super().__init__()
-        self.conv = nn.Conv2d(inplanes, 3, 1)
+        self.conv = nn.Conv2d(inchannels, 3, 1)
         self.clamp = nn.Hardtanh(0, 1, True)
 
     def forward(self, x):

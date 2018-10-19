@@ -28,29 +28,30 @@ TRAIN: !YAMLDict
     IMAGE_DATA_STDEV: 1.0
   RESNET: !YAMLDict
     resnet50: !YAMLDict
-      DOWN: !YAMLDict
-        LAYERS:
+      down: !YAMLDict
+        nblocks:
           - 2
           - 3
           - 6
-        STRIDE:
-          - 2
-          - 2
-          - 2
-        MULTIPLIER:
-          - 2
-          - 4
-          - 8
-      UP: !YAMLDict
-        LAYERS: 
+        stride: 2
+        kernel_size: 3
+        padding: 1
+        inchannels:
+          - 256
+          - 512
+          - 1024
+      up: !YAMLDict
+        nblocks: 
           - 3
           - 2
           - 2
-        STRIDE:
           - 2
-          - 2
-          - 4
-        MULTIPLIER:
-          - 0.5
-          - 0.125
-          - 0.03125
+        stride: 2
+        kernel_size: 3
+        padding: 1
+        output_padding: 1
+        inchannels:
+          - 512
+          - 256
+          - 128
+          - 64
