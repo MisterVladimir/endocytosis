@@ -55,9 +55,9 @@ class SimulatedModel(nn.Module):
             inchannels, down, up)
 
     def forward(self, im):
-        print('imshape: {}'.format(im.size()))
+        # print('imshape: {}'.format(im.size()))
         im = self.bottom(im)
-        print('imshape: {}'.format(im.size()))
+        # print('imshape: {}'.format(im.size()))
         im = self.middle(im)
-        print('imshape: {}'.format(im.size()))
+        # print('imshape: {}'.format(im.size()))
         return im

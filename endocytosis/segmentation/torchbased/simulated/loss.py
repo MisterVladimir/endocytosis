@@ -24,6 +24,11 @@ from torch import nn
 from ....config import CONFIG
 
 
+def print_sizes(*args):
+    for name, arg in args:
+        print("{} size: {}".format(name, arg.size()))
+
+
 class MaskLoss(nn.Module):
     def __init__(self, inchannels):
         super().__init__()
@@ -32,22 +37,26 @@ class MaskLoss(nn.Module):
 
     def forward(self, x, mask):
         x = self.conv(x)
-        mask = mask.to(dtype=torch.long)
+        mask = mask.to(dtype=torch.long).squeeze()
         return self.loss(x, mask)
 
 
 class DeltasLoss(nn.Module):
     def __init__(self, inchannels):
         super().__init__()
-        self.loss = nn.SmoothL1Loss(reduction='elementwise_mean')
+        # self.loss = nn.SmoothL1Loss(reduction='elementwise_mean')
         self.conv = nn.Conv2d(inchannels, out_channels=2, kernel_size=1)
 
     def forward(self, x, mask, dx, dy):
+        mask = mask.to(torch.uint8)
         x = self.conv(x)
-        deltas = torch.stack([dx, dy], dim=0)
         x = torch.masked_select(x, mask)
-        gt = torch.masked_select(deltas, mask)
-        return self.loss(x, gt)
+        deltas = torch.stack([dx, dy])
+        deltas = torch.masked_select(deltas, mask)
+        x = (x - deltas)**2
+        x = x.reshape((2, -1))
+        x = x.sum(0)
+        return x.mean()
 
 
 class CombinedLoss(nn.Module):

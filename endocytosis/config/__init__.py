@@ -20,10 +20,20 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import os
 
-from .load import load_config
+from .load import load_config as _load_config
 
 folder = os.path.dirname(__file__)
 path = os.path.join(folder, 'config.yaml')
-CONFIG = load_config(path)
 
-__all__ = ['CONFIG', ]
+
+def reload_config():
+    return _load_config(path)
+
+
+def reset_global_config():
+    globals()['CONFIG'] = reload_config()
+
+
+CONFIG = reload_config()
+
+__all__ = ['CONFIG', 'reload_config', 'reset_global_config']

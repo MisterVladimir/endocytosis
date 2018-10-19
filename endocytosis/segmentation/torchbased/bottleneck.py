@@ -79,12 +79,12 @@ class _MiniBlockBase(nn.Module):
             return kernel_size % 2
 
     def forward(self, x):
-        print('start size: {}'.format(x.size()))
+        # print('start size: {}'.format(x.size()))
         x = self.conv(x)
         x = self.bn(x)
         if self.relu:
             x = self.relu(x)
-        print('end size: {}'.format(x.size()))
+        # print('end size: {}'.format(x.size()))
         return x
 
 
@@ -179,7 +179,7 @@ class _BottleneckBase(nn.Module):
                 innerchannels = _kwargs['inchannels'] // self.expansion
                 _kwargs.update({'outchannels': innerchannels})
 
-        print(_kwargs)
+        # print(_kwargs)
 
         return _kwargs
 

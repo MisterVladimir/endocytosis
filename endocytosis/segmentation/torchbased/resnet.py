@@ -166,7 +166,7 @@ def build_resnet_middle(inchannels, down, up=None):
 
     downlength, down = filter_dict(down)
     downres = DownResNet(inchannels)
-    print(down)
+    # print(down)
     add_layers(downres, down, downlength)
     result = nn.ModuleList([downres, ])
     # add layers to upsampling ResNet
