@@ -6,6 +6,9 @@
 *.ijm
 VS_201*
 
+# tempfiles
+~*
+
 # .gitignore file 
 .gitignore
 

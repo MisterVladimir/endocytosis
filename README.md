@@ -13,7 +13,7 @@ This is a work in progress. More 'How To Use This Software'-type of information 
 Single molecule switching (SMS, otherwise known as [PALM](https://en.wikipedia.org/wiki/Photoactivated_localization_microscopy) or STORM) data may serve as a good heuristic for simulateable data. This is relatively easy to do: each object is a diffracion-limited spot (a [point spread function (PSF)](https://en.wikipedia.org/wiki/Point_spread_function)) modeled by a 2d Gaussian. EMCCD camera noise too may be modeled and serves as background for the Gaussian spots placed randomly in the image. Note that while SMS data is typically in timelapse form, for simplicity here we similuate video frames independently. 
 
 
-Prerequisites
+Requirements
 ------------------
 [required]
 
@@ -38,6 +38,7 @@ python-bioformats
 Instalation
 ------------------
 pip install git+https://github.com/MisterVladimir/endocytosis/archive/0.1.tar.gz'
+
 
 License
 ------------------

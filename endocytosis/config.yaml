@@ -1,0 +1,60 @@
+!YAMLDict
+TRAIN: !YAMLDict
+  OPTIMIZER: !YAMLDict 
+    Adam: !YAMLDict
+      lr: 0.001
+      betas: 
+        - 0.9
+        - 0.999
+      eps: 0.00000001
+      weight_decay: 0
+      amsgrad: False
+    SGD: !YAMLDict
+      lr: 0.001
+      momentum: 0.9
+      dampening: 0
+      weight_decay: 0
+      nesterov: False
+SIMULATED: !YAMLDict
+  LOSS_RATIO: 2.
+  TRAIN: !YAMLDict
+    BATCH_SIZE: 8
+    RANDOM_CROP: False
+  INFER: !YAMLDict
+    MASK_CUTOFF: 0.3
+  DATA: !YAMLDict
+    ROI_ATTRIBUTE_NAME: centroid
+    CROPPED_IMAGE_SIZE: 128
+    NORMALIZE_IMAGE_DATA: True
+    IMAGE_DATA_MEAN: 0.0
+    IMAGE_DATA_STDEV: 1000.0
+RESNET: !YAMLDict
+  BOTTOM_OUT_PLANES: 256
+  resnet50: !YAMLDict
+    down: !YAMLDict
+      nblocks:
+        - 2
+        - 3
+        - 6
+      stride: 2
+      kernel_size: 3
+      padding: 1
+      inchannels:
+        - 256
+        - 512
+        - 1024
+    up: !YAMLDict
+      nblocks: 
+        - 3
+        - 2
+        - 2
+        - 2
+      stride: 2
+      kernel_size: 3
+      padding: 1
+      output_padding: 1
+      inchannels:
+        - 512
+        - 256
+        - 128
+        - 64

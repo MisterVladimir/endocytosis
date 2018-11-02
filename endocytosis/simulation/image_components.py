@@ -21,28 +21,23 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import numpy as np
 from abc import ABC, abstractmethod
 import h5py
-import weakref
-import os
 import numbers
-import random
-
-from fijitools.helpers.coordinate import Coordinate
-from fijitools.helpers.iteration import isiterable
-
-from ..helpers.data_structures import TrackedSet
+from vladutils.coordinate import Coordinate
+from vladutils.iteration import isiterable
+from vladutils.data_structures import TrackedSet
 
 
 class FieldOfView(object):
     """
-    shape: 2-tuple
-    Shape of image array. Image must be 2D.
+    shape : 2-tuple
+        Shape of image array. Image must be 2D.
 
-    pixelsize: float or Coordinate
-    Nanometers per pixel.
+    pixelsize : float or Coordinate
+        Nanometers per pixel.
 
-    psfmodel: psfmodel.SimpleGaussian2D or psfmodel.Gaussian2D
+    psfmodel : psfmodel.SimpleGaussian2D or psfmodel.Gaussian2D
 
-    noise_model: noise.NoiseModel
+    noise_model : noise.NoiseModel
     """
     def __init__(self, shape, pixelsize, psfmodel, noise_model=None):
         self.shape = np.array(shape, dtype=np.uint16)
@@ -65,14 +60,14 @@ class FieldOfView(object):
     def pixelsize(self, value):
         if isinstance(value, numbers.Real):
             self._pixelsize = Coordinate(nm=[value, value], px=(1., 1.))
-        elif isiterable(value) and np.array(value).ndim == 2:
+        elif isiterable(value) and len(value) == 2:
             self._pixelsize = Coordinate(nm=np.array(value), px=(1., 1.))
         elif isinstance(value, Coordinate):
             nm = value['nm'] / value['px']
             if len(value) == 1:
                 self._pixelsize = Coordinate(nm=[nm, nm], px=[1., 1.])
-            elif len(value) == 2 and all(np.isin(['nm', 'px'],
-                                                 list(value.keys()))):
+            elif len(value) == 2 and all(
+                    [i in value.keys() for i in ['nm', 'px']]):
                 self._pixelsize = Coordinate(nm=nm, px=[1., 1.])
         else:
             raise TypeError('pixelsize must be a number, iterable or '
@@ -81,9 +76,6 @@ class FieldOfView(object):
     def render(self):
         if self.dirty:
             # self._render changes self._data
-            # ideally we'd set self._data to the value returned by
-            # self._render() but since self._data may be large,
-            # we try to avoid making copies
             self._render()
             self.dirty = False
         if self.noise:
@@ -148,6 +140,8 @@ class FieldOfView(object):
 
     def _render_spot(self, spot, add):
         gc = spot.get_global_coordinate()
+        # slices of self._data to which the spot is added and
+        # slices of the rendered spot which are added to self._data
         sldata, slspot = self._get_slice(gc, spot.shape)
         arr = spot.render()
         if add:
@@ -179,6 +173,7 @@ class FieldOfView(object):
         return Spot(coordinate, self.psf, A, self.spot_shape, parent=self)
 
     def get_cropped_roi(self, xy):
+        # TODO: documentation to explain this incomprehensible bit of code
         sshape = self.spot_shape
         imshape = np.array(self.shape)
         # remove any coördinates close to the edge

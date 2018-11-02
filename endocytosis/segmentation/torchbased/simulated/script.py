@@ -19,6 +19,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import argparse
+import numpy as np
 import torch
 from torch import optim
 from torch.utils.data import DataLoader
@@ -26,7 +27,7 @@ from torch.utils.data import DataLoader
 from .dataset import SimulatedDataset
 from .model import SimulatedModel
 from .loss import CombinedLoss
-from ....config import reset_global_config
+from ....config import (CONFIG, reset_global_config)
 
 
 def eval_model(mod):
@@ -34,13 +35,14 @@ def eval_model(mod):
 
 
 def get_optim_params(optimizer):
-    return CONFIG.TRAIN.OPTIMIZER[optimizer]
+    return CONFIG.OPTIMIZER[optimizer]
 
 
+# not tested
 def train(datapath, outpath, nepochs, cuda=False):
     reset_global_config()
     dset = SimulatedDataset(datapath, True)
-    batch_size = CONFIG.TRAIN.BATCH_SIZE
+    batch_size = CONFIG.SIMULATED.TRAIN.BATCH_SIZE
     loader = DataLoader(dset, batch_size)
 
     model = SimulatedModel('resnet50')
@@ -67,65 +69,52 @@ def train(datapath, outpath, nepochs, cuda=False):
         loss.backward()
         optimizer.step()
 
+    dset.cleanup()
 
-def main(datapath, outpath, train, nepochs, cuda=False):
-    reset_global_config()
-    dset = SimulatedDataset(datapath, train)
-    batch_size = CONFIG.TRAIN.BATCH_SIZE
+
+# incomplete
+def infer(datapath, modelpath, cuda=False):
+    model = SimulatedModel('resnet50')
+    dset = InferenceDataset(datapath)
+    batch_size = CONFIG.INFER.BATCH_SIZE
     loader = DataLoader(dset, batch_size)
-    if train:
-        model = SimulatedModel('resnet50')
-        loss_function = CombinedLoss(model.outplanes)
-        optim_params = get_optim_params('Adam')
-        optimizer = optim.Adam(model.parameters(), **optim_params)
-        for i, data in enumerate(loader):
-            if i % 50 == 0:
-                print("Training epoch {}.".format(i))
-            if i == nepochs:
-                break
-            if cuda:
-                device = torch.device('cuda')
-                model.to(device)
-                loss_function.to(device)
-                for tensor in data:
-                    tensor.to(device)
+    # placeholder: load model here
+    model = SimulatedModel('resnet50')
 
-            im, mask, dx, dy = data
-            out = model(im)
-            loss = loss_function(out, mask, dx, dy)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    for i, im in enumerate(loader):
+        if i % 10 == 0:
+            print("Inference epoch {}.".format(i))
+
+        if cuda:
+            device = torch.device('cuda')
+            model.to(device)
+            im.to(device)
+
+        mask, deltas = model(im)
+        start, stop = np.arange([i, i+1]) * batch_size
+        indices = np.arange(start, stop)
 
 
+# not tested
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "-t", "--training", action='store_true',
         help="Set this flag if training. Otherwise, default to inference.")
-
     parser.add_argument(
-        "-p", "--path", type=str,
+        "-d", "--data", type=str,
         help="Set path to training or inference data.")
-
     parser.add_argument(
         "-m", "--model", type=str,
-        help="Model to continue training or to use for inference.")
-
-    parser.add_argument(
-        "-o", "--out", type=str,
-        help="If training, enter the path for saving the trained model and"
-        "resulting model parameters. If inference, enter path to save results.")
-
+        help="Path to model. If training, this is where the model will be "
+        "saved. If inference, this is where the model will be loaded from.")
     parser.add_argument("-e", "--epochs", type=int,
                         help="Number of epochs to train for.")
-
     parser.add_argument("-cu", "--usecuda", type=bool, default=True,
                         help="Should we use CUDA?")
 
     train = parser.train
     datapath = parser.data
-    outpath = parser.out
     modelpath = parser.model
     epochs = parser.epochs
     use_cuda = parser.usecuda
@@ -134,10 +123,13 @@ if __name__ == '__main__':
     if use_cuda and has_cuda:
         print("Using CUDA.")
     else:
-        usecuda = False
+        use_cuda = False
         if use_cuda and not has_cuda:
             print("No CUDA available. Defaulting to CPU.")
         else:
             print("Using CPU.")
 
-    main(datapath, outpath, train, epochs, usecuda)
+    if train:
+        train(datapath, modelpath, epochs, use_cuda)
+    else:
+        infer(datapath, modelpath, use_cuda)

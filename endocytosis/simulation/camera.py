@@ -20,7 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 from ruamel import yaml
 
-from .util import YAMLDict
+from vladutils.io.yaml import YAMLDict
 
 
 class YAMLCameraSpec(YAMLDict):

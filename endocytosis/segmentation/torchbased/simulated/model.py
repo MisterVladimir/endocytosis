@@ -25,31 +25,59 @@ import numpy as np
 from ....config import CONFIG
 from .. import resnet
 from ..bottleneck import (DownBottleneck, UpBottleneck)
-from .loss import CombinedLoss
+
+
+def save(filename, model):
+    """
+    Save the model's state_dict.
+    """
+    torch.save(model.state_dict(), filename)
+
+
+def load(filename, mclass, *args, **kwargs):
+    """
+    Load a model from pickled state_dict.
+
+    Parameters
+    ------------
+    filename : str
+
+    mclass : type
+        Model class.
+
+    args, kwargs
+        Parameters for mclass' constructor.
+    """
+    model = mclass(*args, **kwargs)
+    model.load_state_dict(torch.load(filename))
+    return model
 
 
 class SimulatedModel(nn.Module):
     def __init__(self, resnet_model):
         super().__init__()
+        self.resnet_model
         self.outchannels = None
         self._setup_bottom()
         self._setup_middle(resnet_model)
 
     def _setup_bottom(self):
-        outchannels = CONFIG.TRAIN.BOTTOM_OUT_PLANES
-        ciz = CONFIG.SIMULATED.CROPPED_IMAGE_SIZE
+        outchannels = CONFIG.RESNET.BOTTOM_OUT_PLANES
+        ciz = CONFIG.SIMULATED.DATA.CROPPED_IMAGE_SIZE
         if len(ciz) == 3:
             inchannels = ciz[0]
+            self.cropped_image_size = np.array(ciz[-2:], dtype=np.uint16)
         else:
             inchannels = 1
+            self.cropped_image_size = np.array(ciz, dtype=np.uint16)
 
         self.bottom = resnet.ResNetBottom(inchannels, outchannels)
         self.outchannels = self.bottom.outchannels
 
     def _setup_middle(self, model):
         # block, nlayers, inchannels, stride, multiplier=2
-        down = CONFIG.TRAIN.RESNET[model]['down']
-        up = CONFIG.TRAIN.RESNET[model]['up']
+        down = CONFIG.RESNET[model]['down']
+        up = CONFIG.RESNET[model]['up']
         inchannels = self.bottom.outchannels
         self.outchannels, self.middle = resnet.build_resnet_middle(
             inchannels, down, up)

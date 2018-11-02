@@ -26,7 +26,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import torch
 from torch import nn
 import numpy as np
-from fijitools.helpers.iteration import isiterable
+from vladutils.iteration import isiterable
 
 from ...config import CONFIG
 from .bottleneck import (UpBottleneck, DownBottleneck, ConvMiniBlock)
@@ -180,12 +180,27 @@ def build_resnet_middle(inchannels, down, up=None):
     return outchannels, nn.Sequential(*result)
 
 
-class ResNetTop(nn.Module):
-    def __init__(self, inchannels):
+# in progress
+class PreLossModule(nn.Module):
+    def __init__(self, inchannels, nblocks=1):
         super().__init__()
-        self.conv = nn.Conv2d(inchannels, 3, 1)
-        self.clamp = nn.Hardtanh(0, 1, True)
+        self.block = ConvMiniBlock(inchannels, inchannels, True)
+        self.conv = nn.Conv2d(inchannels, 2, 1)
 
     def forward(self, x):
-        x = self.conv(x)
-        return self.clamp(x)
+        x = self.block(x)
+        return self.conv(x)
+
+    def backward(self, *args):
+        pass
+
+# in progress
+class ResNetTop(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x):
+        ctx.save_for_backward(x)
+        return x
+
+    @staticmethod
+    def backward(ctx, maskloss, deltaloss):
+        pass

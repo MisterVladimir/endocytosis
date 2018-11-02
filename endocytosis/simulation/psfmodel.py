@@ -24,12 +24,12 @@ import h5py
 import os
 from scipy.optimize import minimize
 import numbers
-from fijitools.helpers.data_structures import TrackedList
-from fijitools.helpers.coordinate import Coordinate
-from fijitools.helpers.decorators import methdispatch
-from fijitools.helpers.iteration import isiterable
+from vladutils.data_structures import TrackedList
+from vladutils.coordinate import Coordinate
+from vladutils.decorators import methdispatch
+from vladutils.iteration import isiterable
+from vladutils.contrib.gohlke import psf
 
-from ..contrib.gohlke import psf
 from .obj import cygauss2d
 
 

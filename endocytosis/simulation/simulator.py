@@ -24,12 +24,12 @@ import h5py
 import os
 import random
 from collections.abc import Iterator
-from fijitools.helpers.decorators import methdispatch
-from fijitools.helpers.coordinate import Coordinate
+from vladutils.decorators import methdispatch
+from vladutils.coordinate import Coordinate
+from vladutils.io import IO
+from vladutils.data_structures import TrackedSet
 
 from .image_components import FieldOfView, Spot
-from ..io import IO
-from ..helpers.data_structures import TrackedSet
 
 
 class CoordinateGenerator(Iterator):

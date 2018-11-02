@@ -29,6 +29,7 @@ def print_sizes(*args):
         print("{} size: {}".format(name, arg.size()))
 
 
+# temporary loss functions to get the model to run
 class MaskLoss(nn.Module):
     def __init__(self, inchannels):
         super().__init__()
@@ -56,17 +57,17 @@ class DeltasLoss(nn.Module):
         x = (x - deltas)**2
         x = x.reshape((2, -1))
         x = x.sum(0)
-        return x.mean()
+        return x.mean() / 2
 
 
 class CombinedLoss(nn.Module):
     def __init__(self, inchannels):
         super().__init__()
-        self.ratio = CONFIG.LOSS_RATIO
+        self.ratio = CONFIG.SIMULATED.LOSS_RATIO
         self.deltas_loss = DeltasLoss(inchannels)
         self.mask_loss = MaskLoss(inchannels)
 
     def forward(self, x, mask, dx, dy):
-        mask_loss = self.mask_loss(x, mask)
-        deltas_loss = self.deltas_loss(x, mask, dx, dy)
-        return mask_loss + self.ratio * deltas_loss
+        mloss = self.mask_loss(x, mask)
+        dloss = self.deltas_loss(x, mask, dx, dy)
+        return 1000. * (mloss + self.ratio * dloss) / (1 + self.ratio)

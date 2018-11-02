@@ -19,17 +19,12 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
-import torch
 from torch.utils.data import (Dataset, ConcatDataset, DataLoader)
 from torch import from_numpy
-from addict import Dict
-from scipy import sparse
 import h5py
-import os
-import string
 import numbers
+from vladutils.io import IO
 
-from ....io import IO
 from ....config import CONFIG
 
 
@@ -46,7 +41,7 @@ class SimulatedDataset(Dataset, IO):
     def __init__(self, path, training):
         super().__init__()
         self.training = training
-        self.h5file = h5py.File(path, 'r')
+        self.h5file = h5py.File(path, 'r', userblock_size=512)
         self._parameter_setup()
         self._data_setup()
 
@@ -67,13 +62,13 @@ class SimulatedDataset(Dataset, IO):
                             'length two or three.')
 
     def _parameter_setup(self):
-        self.roi_attribute_name = CONFIG.TRAIN.SIMULATED.ROI_ATTRIBUTE_NAME
-        self.cropped_image_size = CONFIG.TRAIN.SIMULATED.CROPPED_IMAGE_SIZE
-        self.random_crop = CONFIG.TRAIN.SIMULATED.RANDOM_CROP
-        self.normalize_image_data = CONFIG.TRAIN.SIMULATED.NORMALIZE_IMAGE_DATA
+        self.roi_attribute_name = CONFIG.SIMULATED.DATA.ROI_ATTRIBUTE_NAME
+        self.cropped_image_size = CONFIG.SIMULATED.DATA.CROPPED_IMAGE_SIZE
+        self.random_crop = CONFIG.SIMULATED.TRAIN.RANDOM_CROP
+        self.normalize_image_data = CONFIG.SIMULATED.DATA.NORMALIZE_IMAGE_DATA
         if self.normalize_image_data:
-            self.image_data_mean = CONFIG.TRAIN.SIMULATED.IMAGE_DATA_MEAN
-            self.image_data_stdev = CONFIG.TRAIN.SIMULATED.IMAGE_DATA_STDEV
+            self.image_data_mean = CONFIG.SIMULATED.DATA.IMAGE_DATA_MEAN
+            self.image_data_stdev = CONFIG.SIMULATED.DATA.IMAGE_DATA_STDEV
 
     def _data_setup(self):
         # set image data
@@ -171,16 +166,22 @@ class SimulatedDataset(Dataset, IO):
 
         im, mask, dx, dy = self._base_crop(*txy)
 
-        # keys = ('im', 'mask', 'deltas')
         if self.training:
             im.requires_grad_()
             return im, mask, dx, dy
         else:
-            txy = tuple((i.start for i in txy))
-            return (im, *txy)
+            return im
 
     def __len__(self):
         return np.prod(self.imshape // self.cropped_image_size)
+
+    def get_txy(self, index):
+        if self.random_crop:
+            t, x, y = self._random_crop_ind[index]
+        else:
+            t, x, y = self._make_orderly_crop(index)
+
+        return t.start, x.start, y.start
 
     def cleanup(self):
         try:

@@ -163,13 +163,7 @@ if __name__ == '__main__':
     from setuptools import find_packages
     kwargs = [{'path_as_list': ['endocytosis', 'simulation', 'obj'],
                'sources': ['cygauss2d.c'],
-               'module_name': 'cygauss2d'},
-              {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
-               'sources': ['psf.c'],
-               'module_name': '_psf'},
-              {'path_as_list': ['endocytosis', 'contrib', 'gohlke'],
-               'sources': ['tifffile.c'],
-               'module_name': '_tifffile'}]
+               'module_name': 'cygauss2d'}]
     ext = [create_extension(**k) for k in kwargs]
     ver = '0.1'
     url = r'https://github.com/MisterVladimir/endocytosis'
