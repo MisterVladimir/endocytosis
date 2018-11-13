@@ -47,7 +47,7 @@ class FieldOfView(object):
 
         self.pixelsize = pixelsize
         self.psf = psfmodel
-        self.psf.sigma.pixelsize = pixelsize
+        self.psf.pixelsize = pixelsize
         self.noise = noise_model
         self.dirty = False
         self.children = TrackedSet()
@@ -58,17 +58,23 @@ class FieldOfView(object):
 
     @pixelsize.setter
     def pixelsize(self, value):
+        """
+
+        """
         if isinstance(value, numbers.Real):
-            self._pixelsize = Coordinate(nm=[value, value], px=(1., 1.))
-        elif isiterable(value) and len(value) == 2:
-            self._pixelsize = Coordinate(nm=np.array(value), px=(1., 1.))
+            self._pixelsize = np.array([value, value], dtype=np.float32)
+
         elif isinstance(value, Coordinate):
             nm = value['nm'] / value['px']
             if len(value) == 1:
-                self._pixelsize = Coordinate(nm=[nm, nm], px=[1., 1.])
+                self._pixelsize = np.array([nm, nm], dtype=np.float32)
             elif len(value) == 2 and all(
                     [i in value.keys() for i in ['nm', 'px']]):
-                self._pixelsize = Coordinate(nm=nm, px=[1., 1.])
+                self._pixelsize = np.array(nm, dtype=np.float32)
+
+        elif isiterable(value) and len(value) == 2:
+            self._pixelsize = np.array(value, dtype=np.float32)
+
         else:
             raise TypeError('pixelsize must be a number, iterable or '
                             'Coordinate.')
@@ -194,11 +200,15 @@ class FieldOfView(object):
                 'readoutNoise': nm.readoutNoise,
                 'electronsPerCount': nm.electronsPerCount}
 
+    def clear(self):
+        self._data[:] = 0.
+        self.children = TrackedSet()
+
     def save(self, path):
         with h5py.File(path) as f:
             im = self.render()
             im = f.create_dataset('image', data=im)
-            im.attrs['pixelsize'] = self.pixelsize['nm']
+            im.attrs['pixelsize'] = tuple(self.pixelsize)
             im.attrs['pixelunit'] = 'nm'
 
             cam = f.create_group('camera')
@@ -209,7 +219,7 @@ class FieldOfView(object):
             children = list(self.children)
             # save cropped versions of the spots
             sp = f.create_group('spots')
-            sp.attrs['pixelsize'] = self.pixelsize['nm']
+            sp.attrs['pixelsize'] = tuple(self.pixelsize)
             sp.attrs['pixelunit'] = 'nm'
             centroids = np.array([c.get_global_coordinate()['px']
                                   for c in children])

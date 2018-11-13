@@ -1,4 +1,3 @@
 include *.txt
 include *.rst
-include endocytosis/test/simulation/data/*
-include endocytosis/test/image/data/*
+include endocytosis/data/*

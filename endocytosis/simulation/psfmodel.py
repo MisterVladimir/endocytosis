@@ -23,8 +23,8 @@ from abc import ABC, abstractmethod
 import h5py
 import os
 from scipy.optimize import minimize
+from scipy import special
 import numbers
-from vladutils.data_structures import TrackedList
 from vladutils.coordinate import Coordinate
 from vladutils.decorators import methdispatch
 from vladutils.iteration import isiterable
@@ -207,7 +207,8 @@ class AbstractPSFModel(ABC):
             raise ValueError("Parameters {} are missing from the HDF5 "
                              "file.".format(str(missing)[1:-1]))
 
-    def dataset_to_numpy(self, dset):
+    @staticmethod
+    def dataset_to_numpy(dset):
         if isiterable(dset.value):
             return np.array(dset.value, copy=True)
         elif isinstance(dset.value, numbers.Integral):
@@ -286,7 +287,7 @@ class Gaussian2D(AbstractPSFModel):
                 [getattr(self, n).value.mean() for n in self.model_parameters]
 
         dx, dy = shape
-        X, Y = np.mgrid[:dx, :dy]
+        X, Y = np.array(np.mgrid[:dx, :dy], dtype=np.int32)
         self.rendered = True
         return self.model_function(A, sigma, x, y, mx, my, b, X, Y)
 
@@ -351,33 +352,86 @@ class Gaussian2D(AbstractPSFModel):
 
 
 class SimpleGaussian2D(object):
-    """
-    Parameters
-    -------------
-    x, y: float
-    coordinates relative to the rendered image's center.
-    """
     model_function = cygauss2d.model
 
-    def __init__(self, sigma):
-        self.sigma = sigma
+    def __init__(self, sigma, pixelsize):
+        if isiterable(sigma) and len(sigma) == 2:
+            sigma = np.array(sigma, dtype=np.float32)
+        elif isinstance(sigma, numbers.Real):
+            sigma = np.array([sigma, sigma], dtype=np.float32)
+
+        if isinstance(pixelsize, Coordinate):
+            pixelsize = pixelsize['nm'] / pixelsize['px']
+
+        self.sigma = Coordinate(nm=sigma, px=sigma/pixelsize)
+
+    @property
+    def pixelsize(self):
+        return self.sigma.pixelsize
+
+    @pixelsize.setter
+    def pixelsize(self, nm):
+        """
+        Parameters
+        ------------
+        nm : numbers.Real
+        """
+        del self.sigma['px']
+        if isinstance(nm, Coordinate):
+            self.sigma['px'] = self.sigma['nm'] / nm.pixelsize
+        else:
+            self.sigma['px'] = self.sigma['nm'] / nm
 
     def render(self, A, x, y, shape):
+        """
+        Parameters
+        -------------
+        x, y: float
+        coordinates relative to the rendered image's center.
+        """
         shape = np.array(shape, dtype=np.float32)
         A = np.float32(A)
         x, y = np.array([x, y]) + shape / 2
         zero = np.float32(0.)
-        if len(self.sigma) == 1:
-            sigma = np.copy(self.sigma['px'] * np.ones(2, dtype=np.float32))
-        elif len(self.sigma) == 2:
-            sigma = np.copy(self.sigma['px'].astype(np.float32))
-        else:
-            raise TypeError('sigma must be one- or two-dimensional.')
+        sigma = self.sigma['px'].astype(np.float32)
 
-        dx, dy = np.array(shape, dtype=np.int16)
-        X, Y = np.mgrid[:dx, :dy]
+        dx, dy = shape
+        X, Y = np.array(np.mgrid[:dx, :dy], dtype=np.int32)
         return self.model_function(A, sigma, x, y,
                                    zero, zero, zero, X, Y)
+
+# not tested
+class SimpleAiry2D(object):
+    def __init__(self, pixelsize, magnification=100., NA=1.4, em_wavelength=500.):
+        if isinstance(pixelsize, Coordinate):
+            pixelsize = pixelsize['nm'] / pixelsize['px']
+        self.pixelsize = pixelsize
+        self.NA = NA
+        self.magnification = magnification
+        self.em_wavelength = em_wavelength
+
+    @property
+    def sigma(self):
+        # approximate
+        nm = 0.61 * self.em_wavelength / self.NA
+        nm = np.array([nm, nm], dtype=np.float32)
+        return Coordinate(nm=nm, px=self.pixelsize * nm)
+
+    def render(self, A, x, y, shape):
+        a = 2 * np.pi * self.NA / (self.em_wavelength * self.magnification)
+        X, Y = np.mgrid[:shape[0], :shape[1]] * self.pixelsize
+        x = self.pixelsize * (x + shape[0] / 2.)
+        y = self.pixelsize * (y + shape[1] / 2.)
+        # position the emitter ever so slightly off center to avoid zeros
+        # in the denominator
+        x -= 2.
+        y -= 2.
+        # distance between the pixel coordinate and the emitter
+        r = np.hypot(x-X, y-Y)
+        im = (special.jv(1, a * r) / np.sqrt(np.pi) * r) ** 2
+        min_ = im.min()
+        max_ = im.max()
+        return (im - min_) / (max_ - min_) * A
 
 
 # not sure what to do with this for now

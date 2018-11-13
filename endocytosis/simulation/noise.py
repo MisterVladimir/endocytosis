@@ -21,8 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import copy
 import numpy as np
 
-from ..contrib.PYME.Acquire.Hardware.Simulator import fakeCam
-from ..io.yaml.camera import load_camera_yaml
+from .camera import load_camera_yaml
 
 
 class NoiseModel(object):

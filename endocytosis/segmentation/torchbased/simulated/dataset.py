@@ -26,24 +26,34 @@ import numbers
 from vladutils.io import IO
 
 from ....config import CONFIG
+from ..enums import ModelTask
 
 
-class SimulatedDataset(Dataset, IO):
+class SimulationDataset(Dataset, IO):
     """
     Parameters
     -----------
     path : str
         hdf5 file name with full path.
 
-    training : bool
-        True if training, False if making inferences.
+    training : ModelTask
+        Enum options are TRAINING, TESTING, INFERENCE
     """
     def __init__(self, path, training):
         super().__init__()
-        self.training = training
-        self.h5file = h5py.File(path, 'r', userblock_size=512)
+        self.training_flag = training
+        self.h5file = h5py.File(path, 'r')
         self._parameter_setup()
         self._data_setup()
+
+    @property
+    def training_flag(self):
+        return self._training_flag
+
+    @training_flag.setter
+    def training_flag(self, value):
+        self._training_flag = value
+        self.training = value & ModelTask.TRAINING
 
     @property
     def cropped_image_size(self):
@@ -51,6 +61,17 @@ class SimulatedDataset(Dataset, IO):
 
     @cropped_image_size.setter
     def cropped_image_size(self, ciz):
+        """
+        Sets the shape of the image returned by self.__getitem__
+
+        Parameters
+        ------------
+        ciz : int or list of ints
+            If int, output image shape is [1, ciz, ciz].
+            If list of length two, we assume it's a grayscale image; 
+            otherwise if ciz contains three integers, shape is same
+            as the argument.
+        """
         if isinstance(ciz, numbers.Integral):
             self._cropped_image_size = np.array([1, ciz, ciz])
         elif len(ciz) == 2:
@@ -58,8 +79,8 @@ class SimulatedDataset(Dataset, IO):
         elif len(ciz) == 3:
             self._cropped_image_size = np.array(ciz)
         else:
-            raise TypeError('cropped_image_size must be set with list of '
-                            'length two or three.')
+            raise TypeError('cropped_image_size must be set with an integer '
+                            'or a list of length two or three.')
 
     def _parameter_setup(self):
         self.roi_attribute_name = CONFIG.SIMULATED.DATA.ROI_ATTRIBUTE_NAME
@@ -82,55 +103,66 @@ class SimulatedDataset(Dataset, IO):
 
     def _base_crop(self, t, x, y):
         """
+        For use with output of _make_orderly_crop or _make_random_crop
+        methods.
+
         Parameters
         ------------
         t, x, y: slice
 
         Returns
         ------------
-        im: numpy.ndarray
+        im: torch.Tensor
         Cropped image data.
 
-        mask: numpy.ndarray
-        Boolean array, denotes whether pixel contains a spot.
+        mask: torch.Tensor
+        Boolean array, denotes whether pixel contains a spot centroid.
 
-        deltas: numpy.ndarray
+        deltas: torch.Tensor
         XY coördinates of spot centroid relative to the top left corner (0, 0)
         of the pixel.
         """
-        im = self.image[t, x, y]
+        im = self.image[t, x, y].astype(np.float32)
         if self.normalize_image_data:
             mean = self.mean[t]
             stdev = self.stdev[t] / self.image_data_stdev
             im = (im - mean) / stdev + self.image_data_mean
 
-        if not self.training:
-            return from_numpy(im), None, None, None
+        if self.training_flag & ModelTask.INFERENCE:
+            out = [im, ] + [np.array([i.start]) for i in (t, x, y)]
+            return [from_numpy(item) for item in out]
 
+        # For each pixel that contains a spot centroid, assign it that
+        # centroid's (x, y) coördinates. Note that this coördinate is
+        # relative to the top left corner of the cropped image, not the
+        # original image.
+        # XXX: this only works for grayscale images
         deltas = np.zeros([2, *im.squeeze().shape], dtype=np.float32)
-        # XY cooridnates from ground truth data
+        # XY coördinates from ground truth data
         gt = self.h5file['ground_truth'][self.roi_attribute_name][str(t.start)]
         gt = gt.value
         # filter out any coördinates outside this cropped image
-        # cmask = coördinate mask
+        # cmask stands for Coördinate Mask
         cmask = np.logical_and(gt >= [x.start, y.start], gt < [x.stop, y.stop])
         cmask = cmask.all(1)
         if np.any(cmask):
-            # x, y coördinates, with cropped image's top left corner set to [0, 0]
             xy = gt[cmask] - [x.start, y.start]
-            xyint = xy.astype(int)
-            xi, yi = xyint.T
-            deltas[:, xi, yi] = (xy - xyint).T
+            xy = xy.T
+            xi, yi = xy.astype(int)
+            # (0, 0) coördinate is the center of the upper left hand
+            # corner's pixel
+            deltas[:, xi, yi] = xy
             # pixels where a spot centroid is located
             mask = deltas > 0
             mask = mask.all(0)[None, :]
-            out = (im, mask.astype(np.float32))
+            # TODO: check whether mask should be float32 or long
+            out = (im, mask.astype(np.uint8))
         else:
-            out = (im, np.zeros_like(im, dtype=np.float32))
+            out = (im, np.zeros_like(im, dtype=np.uint8))
 
         dx, dy = deltas[:, None, :, :]
         out += (dx, dy)
-        return (from_numpy(item) for item in out)
+        return [from_numpy(item) for item in out]
 
     def _new_random_crop(self):
         max_start = self.imshape - self.cropped_image_size
@@ -140,6 +172,29 @@ class SimulatedDataset(Dataset, IO):
 
     def _make_orderly_crop(self, index):
         """
+        It's easiest to explain this by example
+
+        If the original data is 2d and of shape
+        _________________
+        |               |
+        |               |
+        |               |
+        |_______________|
+
+        and we want to return cropped images of shape
+        _________
+        |       |
+        |_______|
+
+        This method returns the slices corresponding to the following:
+        _________________
+        |  i=0  |  i=1  |
+        |_______|_______|
+        |  i=2  |  i=3  |
+        |_______|_______|
+
+        where i is the index.
+
         Returns
         ----------
         t, x, y: slice
@@ -164,13 +219,12 @@ class SimulatedDataset(Dataset, IO):
         else:
             txy = self._make_orderly_crop(key)
 
-        im, mask, dx, dy = self._base_crop(*txy)
+        output = self._base_crop(*txy)
 
-        if self.training:
-            im.requires_grad_()
-            return im, mask, dx, dy
-        else:
-            return im
+        # if self.training_flag & ModelTask.TRAINING:
+        #     output[0].requires_grad_()
+
+        return output
 
     def __len__(self):
         return np.prod(self.imshape // self.cropped_image_size)

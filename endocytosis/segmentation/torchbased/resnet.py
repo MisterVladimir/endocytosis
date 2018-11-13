@@ -138,24 +138,28 @@ def build_resnet_middle(inchannels, down, up=None):
     up : dict
         Keyword arguments to the add_layer methods of DownResNet and UpResNet,
         respectively.
-
-
     """
     def filter_dict(dic):
         """
+        Parameters
+        -----------
+        dic : dict
+            At least one value should be a list and the others should be
+            integers.
+            
         If a value in the dictionary is not iterable, repeat it 'length'
         times, where 'length' is the minimum length of an iterable in
         the dictionary's values.
         """
-        keys = []
+        keys_to_non_iterable_values = []
         lengths = []
         for k, v in dic.items():
-            if isiterable(v):
+            if isiterable(v) and not isinstance(v, dict):
                 lengths.append(len(v))
             else:
-                keys.append(k)
+                keys_to_non_iterable_values.append(k)
         lengths = min(lengths)
-        for k in keys:
+        for k in keys_to_non_iterable_values:
             dic.update({k: [dic[k]] * lengths})
         return lengths, dic
 
@@ -178,29 +182,3 @@ def build_resnet_middle(inchannels, down, up=None):
 
     outchannels = result[-1].outchannels
     return outchannels, nn.Sequential(*result)
-
-
-# in progress
-class PreLossModule(nn.Module):
-    def __init__(self, inchannels, nblocks=1):
-        super().__init__()
-        self.block = ConvMiniBlock(inchannels, inchannels, True)
-        self.conv = nn.Conv2d(inchannels, 2, 1)
-
-    def forward(self, x):
-        x = self.block(x)
-        return self.conv(x)
-
-    def backward(self, *args):
-        pass
-
-# in progress
-class ResNetTop(torch.autograd.Function):
-    @staticmethod
-    def forward(ctx, x):
-        ctx.save_for_backward(x)
-        return x
-
-    @staticmethod
-    def backward(ctx, maskloss, deltaloss):
-        pass

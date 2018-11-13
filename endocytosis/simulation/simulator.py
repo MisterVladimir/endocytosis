@@ -51,7 +51,7 @@ class VanillaCoordinateGenerator(CoordinateGenerator):
             _x = random.uniform(0, x)
             _y = random.uniform(0, y)
             px = np.array([_x, _y])
-            kwargs = {'px': px, 'nm': px * self.pixelsize['nm']}
+            kwargs = {'px': px, 'nm': px * self.pixelsize}
             yield Coordinate(**kwargs)
 
 
@@ -76,7 +76,7 @@ class DensityLimitGenerator(CoordinateGenerator):
             dx, dy = random.random(), random.random()
             px = next(self._indices) + [dx, dy]
             px *= self.density
-            kwargs = {'px': px, 'nm': px * self.pixelsize['nm']}
+            kwargs = {'px': px, 'nm': px * self.pixelsize}
             yield Coordinate(**kwargs)
 
     def initialize(self):
@@ -91,7 +91,7 @@ class DensityLimitGenerator(CoordinateGenerator):
 
 class RandomSimulator(IO):
     """
-    Simmulates and saves SMS-like images to HDF5 file.
+    Simulates and saves SMS-like images to HDF5 file.
 
     Parameters
     ------------
@@ -122,6 +122,8 @@ class RandomSimulator(IO):
         """
         Creates HDF5 file where simulated data is saved.
         """
+        # if h5file were previously set, close it before
+        # creating a new one
         if self._h5file:
             self.cleanup()
         self._h5file = h5py.File(path)
@@ -220,8 +222,8 @@ class RandomSimulator(IO):
                 'spots per image was passed in.')
 
         if not self._h5file:
-            raise IOError("No HDF5 file has been created. Please use"
-                          "'set_h5file' method to do so.")
+            raise IOError("HDF5 file for writing data has not been created. "
+                          "Please use 'set_h5file' method to do this.")
         else:
             self._h5file.clear()
 
@@ -229,7 +231,7 @@ class RandomSimulator(IO):
         self._h5file.attrs['n_spots'] = n_spots
 
         imgrp = self._h5file.create_group('image')
-        imgrp['pixelsize'] = self._fov.pixelsize['nm']
+        imgrp['pixelsize'] = self._fov.pixelsize
         imgrp['pixelunit'] = 'nm'
         imgrp['DimensionOrder'] = 'TXY'
 
@@ -238,7 +240,7 @@ class RandomSimulator(IO):
         means = imgrp.create_dataset('mean', shape=(nT, ), dtype=np.float32)
         stdevs = imgrp.create_dataset('stdev', shape=(nT, ), dtype=np.float32)
 
-        # load camera parameters
+        # write camera parameters
         cam = self._h5file.create_group('camera')
         for k, v in self._fov.camera_metadata.items():
             _ = cam.create_dataset(k, data=v)
@@ -256,8 +258,8 @@ class RandomSimulator(IO):
         for t in range(nT):
             centroid.create_dataset(str(t), dtype=np.float32,
                                     data=np.array([c['px'] for c in cords[t]]))
-            # the following is hacky but it's much faster than executing
-            # sequential calls to self._fov.add_spot
+            # the following is a more performant version of
+            # executing sequential calls to self._fov.add_spot
             self._fov.children = \
                 TrackedSet([Spot(c, self._fov.psf, next(A),
                                  self._fov.spot_shape,
@@ -269,8 +271,5 @@ class RandomSimulator(IO):
             means[t] = imdata.mean()
             stdevs[t] = imdata.std()
             # Clear all spots from a FieldOfView by zero-ing out
-            # the _data attribute. Not exactly kosher to peak into
-            # private variables, but it's faster than methods
-            # provided by FieldOfView.
-            self._fov.children = TrackedSet()
-            self._fov._data[:] = 0
+            # the _data attribute and removing all Spots. 
+            self._fov.clear()

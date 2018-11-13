@@ -18,36 +18,15 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-import os
-from ruamel import yaml
-from vladutils.io.yaml import YAMLDict
-
-FOLDER = os.path.join(os.path.dirname(__file__), 'data')
-FILENAME = os.path.join(FOLDER, 'config.yaml')
 
 
-def reload_config(filename=FILENAME):
-    y = yaml.YAML(typ='safe')
-    y.register_class(YAMLDict)
-    cfg_from_yaml = None
-    with open(filename, 'r') as f:
-        cfg_from_yaml = y.load(f)
-    return cfg_from_yaml
+# placeholder
+class ModelEvaluater(object):
+    def __init__(self):
+        pass
 
-CONFIG = reload_config()
-
-
-def reset_global_config():
-    globals()['CONFIG'] = reload_config()
-
-__all__ = ['CONFIG', 'reload_config', 'reset_global_config']
-
-
-def test():
-    reload_config()
-    reset_global_config()
-    CONFIG
-
-
-if __name__ == '__main__':
-    test()
+    def __call__(self, gt, test):
+        """
+        gt : torch.Tensor
+        Ground truth data in the form of 
+        """

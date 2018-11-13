@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# cython: language_level=3
 """
 @author: Vladimir Shteyn
 @email: vladimir.shteyn@googlemail.com
@@ -18,8 +19,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-import numpy
+import numpy as np
 cimport cython
 
 
@@ -35,24 +35,32 @@ def objective(float A, float sigma, float x, float y,
 
     for i in range(imax):
         for j in range(jmax):
-            ret += (data[i, j] - A*numpy.exp(
-                -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma))**2
-    return numpy.float(ret)
+            ret += (data[i, j] - A*np.exp(
+                -((X[i, j] - x)**2 + (Y[i, j] - y)**2)/sigma)
+                - (mx * (X[i, j] - x) + my * (Y[i, j] - y) + b))**2
+
+    return np.float(ret)
 
 def model(float A, float [::1] sigma, float x, float y, 
           float mx, float my, float b, int [:, ::1] X, int [:, ::1] Y):
-    
+
     cdef Py_ssize_t imax = X.shape[0]
     cdef Py_ssize_t jmax = X.shape[1]
+    cdef Py_ssize_t i
+    cdef Py_ssize_t j
+    cdef float bg
+
     sigma[0] = 2*sigma[0]**2
     sigma[1] = 2*sigma[1]**2
-    ret_py = numpy.zeros_like(X, dtype=numpy.float32)
-    cdef float [:,::1] ret_c = ret_py
+    ret_py = np.zeros_like(X, dtype=np.float32)
+    cdef float [:, ::1] ret_c = ret_py
 
     for i in range(imax):
         for j in range(jmax):
-            ret_c [i, j::1] = A*numpy.exp(
+            bg = mx * (X[i, j] - x) + my * (Y[i, j] - y) + b
+            ret_c [i, j::1] = bg + A*np.exp(
                 -((X[i, j] - x)**2/sigma[0] +
                   (Y[i, j] - y)**2/sigma[1]))
+                
 
     return ret_py

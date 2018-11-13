@@ -142,8 +142,8 @@ def create_extension(path_as_list, sources, module_name):
     # def create_extension(name, sources):
     """
     """
-    if platform == 'darwin':
-        # MacOS
+    if platform in ('darwin', 'linux'):
+        # MacOS or Linux
         link_args = []
     else:
         link_args = ['-static-libgcc']

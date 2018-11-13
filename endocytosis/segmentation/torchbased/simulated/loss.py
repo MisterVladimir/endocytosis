@@ -25,49 +25,54 @@ from ....config import CONFIG
 
 
 def print_sizes(*args):
+    """
+    Parameters
+    -----------
+    args : 2-tuples
+        arg[0] : name of the tensor to print
+        arg[1] : torch.Tensor
+    """
     for name, arg in args:
         print("{} size: {}".format(name, arg.size()))
 
 
-# temporary loss functions to get the model to run
-class MaskLoss(nn.Module):
-    def __init__(self, inchannels):
-        super().__init__()
-        self.loss = nn.CrossEntropyLoss(reduction='elementwise_mean')
-        self.conv = nn.Conv2d(inchannels, out_channels=2, kernel_size=1)
-
-    def forward(self, x, mask):
-        x = self.conv(x)
-        mask = mask.to(dtype=torch.long).squeeze()
-        return self.loss(x, mask)
-
-
-class DeltasLoss(nn.Module):
-    def __init__(self, inchannels):
-        super().__init__()
-        # self.loss = nn.SmoothL1Loss(reduction='elementwise_mean')
-        self.conv = nn.Conv2d(inchannels, out_channels=2, kernel_size=1)
-
-    def forward(self, x, mask, dx, dy):
-        mask = mask.to(torch.uint8)
-        x = self.conv(x)
-        x = torch.masked_select(x, mask)
-        deltas = torch.stack([dx, dy])
-        deltas = torch.masked_select(deltas, mask)
-        x = (x - deltas)**2
-        x = x.reshape((2, -1))
-        x = x.sum(0)
-        return x.mean() / 2
-
-
 class CombinedLoss(nn.Module):
-    def __init__(self, inchannels):
+    def __init__(self):
         super().__init__()
         self.ratio = CONFIG.SIMULATED.LOSS_RATIO
-        self.deltas_loss = DeltasLoss(inchannels)
-        self.mask_loss = MaskLoss(inchannels)
 
-    def forward(self, x, mask, dx, dy):
-        mloss = self.mask_loss(x, mask)
-        dloss = self.deltas_loss(x, mask, dx, dy)
-        return 1000. * (mloss + self.ratio * dloss) / (1 + self.ratio)
+    def _get_weights(self, mask):
+        # total number of pixels in mask
+        n = torch.prod(torch.tensor(mask.size())).item()
+        foreground = mask.sum().item()
+        background = n - foreground
+        weights = torch.zeros_like(mask, dtype=torch.float32)
+        weights[mask] = 1. / foreground
+        weights[~mask] = 1. / background
+        return weights
+
+    def forward(self, p, xdeltas, mask, dx, dy):
+        """
+        Parameters
+        -------------
+        xdeltas : torch.Tensor (dtype=torch.float32)
+        xmask : torch.Tensor (dtype=torch.uint8)
+        Trained data output from 
+
+        mask, dx, dy : torch.Tensor
+        """
+        # ratio of background/foreground pixels
+        bg_fg_weights = self._get_weights(mask[0])
+        # bg_fg_weights = bg_fg_weights.to(p.device)
+        mask2d = mask[0].to(torch.float32)
+        mask_loss = nn.functional.binary_cross_entropy(
+            p, mask2d, weight=bg_fg_weights)
+
+        deltas = torch.cat([dx, dy], dim=1)
+        deltas = torch.masked_select(deltas, mask).reshape((2, -1))
+        # print("deltas : {}".format(deltas.size()))
+        xdeltas = torch.masked_select(xdeltas, mask).reshape((2, -1))
+        # print("xdeltas : {}".format(xdeltas.size()))
+        sqdif = (deltas - xdeltas)**2
+        deltas_loss = sqdif.sum() / xdeltas.size()[1]
+        return 1000. * (mask_loss + self.ratio * deltas_loss) / (1 + self.ratio)

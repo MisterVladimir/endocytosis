@@ -55,6 +55,7 @@ class _MiniBlockBase(nn.Module):
 
     def initialize(self):
         # initialize weights
+        # copied from faster-rcnn.pytorch
         for m in self.modules():
             if isinstance(m, (nn.Conv2d, nn.ConvTranspose2d)):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -91,8 +92,7 @@ class _MiniBlockBase(nn.Module):
 class ConvMiniBlock(_MiniBlockBase):
     """
     Simple module containing one 2d convolution and one batch normalization
-    layer. Also stores information about the convolution's kernel size,
-    stride, and padding as instance attributes.
+    layer.
     """
     def __init__(self, inchannels, outchannels, relu=False, kernel_size=1,
                  stride=1, padding=0, **kwargs):
@@ -167,7 +167,8 @@ class _BottleneckBase(nn.Module):
         # default arguments
         _kwargs = copy.deepcopy(self.default_kwargs)
         # if we're up- or down-sampling the input, get parameters
-        # from the Module performing the up- or down-sampling
+        # from the Module ('sampler' argument) performing the
+        # up- or down-sampling
         if sampler:
             _kwargs = {k: getattr(sampler, k) for k in _kwargs}
             innerchannels = _kwargs['outchannels'] // self.expansion
@@ -180,8 +181,11 @@ class _BottleneckBase(nn.Module):
                 _kwargs.update({'outchannels': innerchannels})
 
         # print(_kwargs)
-
         return _kwargs
+
+    @abstractclassmethod
+    def make_sampler(cls, *args, **kwargs):
+        pass
 
     def forward(self, x):
         residual = x

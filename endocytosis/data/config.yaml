@@ -16,15 +16,19 @@ TRAIN: !YAMLDict
       weight_decay: 0
       nesterov: False
 SIMULATED: !YAMLDict
-  LOSS_RATIO: 2.
+  LOSS_RATIO: 0.1
   TRAIN: !YAMLDict
     BATCH_SIZE: 8
     RANDOM_CROP: False
+    MASK_CUTOFF: 0.7
   INFER: !YAMLDict
-    MASK_CUTOFF: 0.3
+    MASK_CUTOFF: 0.7
+    BATCH_SIZE: 20
   DATA: !YAMLDict
     ROI_ATTRIBUTE_NAME: centroid
-    CROPPED_IMAGE_SIZE: 128
+    CROPPED_IMAGE_SIZE:
+      - 256
+      - 256
     NORMALIZE_IMAGE_DATA: True
     IMAGE_DATA_MEAN: 0.0
     IMAGE_DATA_STDEV: 1000.0
