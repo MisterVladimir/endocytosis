@@ -1,10 +1,9 @@
 endocytosis
 ==================
-**Author**: Vladimir Shteyn 
-
-**GitHub**: [GitHub](https://github.com/mistervladimir)
-
+**Author**: Vladimir Shteyn  
+**GitHub**: [GitHub](https://github.com/mistervladimir)  
 **LinkedIn**: [LinkedIn](https://www.linkedin.com/in/vladimir-shteyn/)
+
 
 Introduction
 ------------------
@@ -17,23 +16,16 @@ Requirements
 ------------------
 [required]
 
-numpy
-
-scipy
-
-tensorflow
-
-h5py
-
-fijitools
+numpy  
+scipy  
+h5py  
+vladutils  
+pytorch  
 
 
-
-[optional]
-
-javabridge
-
-python-bioformats
+[optional]  
+javabridge  
+python-bioformats  
 
 Instalation
 ------------------
